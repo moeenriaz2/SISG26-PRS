@@ -1,11 +1,15 @@
 #!/usr/bin/env bash
 # =============================================================================
-# setup.sh  –  Download PLINK 1.9, PLINK 2, and GCTA
+# setup.sh  –  Download PLINK 1.9, PLINK 2, GCTA, and GCTB
 #
 # Sources (checked June 2026):
 #   PLINK 1.9  https://www.cog-genomics.org/plink/1.9/
 #   PLINK 2.0  https://www.cog-genomics.org/plink/2.0/
-#   GCTA v1.95.1  https://yanglab.westlake.edu.cn/software/gcta/#Download
+#   GCTA       https://yanglab.westlake.edu.cn/software/gcta/#Download
+#   GCTB       https://cnsgenomics.com/software/gctb/#Download
+#
+# NOTE: GCTB v2.5.5 provides a Linux binary only.
+#       macOS users must compile from source (see below) or use a Linux machine.
 #
 # Usage:
 #   bash setup.sh            # auto-detect OS and chip
@@ -31,7 +35,7 @@ fi
 ARCH="$(uname -m)"
 
 echo "============================================================"
-echo "  PLINK + GCTA Setup"
+echo "  PLINK + GCTA + GCTB Setup"
 echo "  Target : ${EXE_DIR}"
 echo "  OS     : ${OS}  |  Arch: ${ARCH}"
 echo "============================================================"
@@ -52,7 +56,7 @@ dl() {
 }
 
 # ── 1. PLINK 1.9  (stable beta 7.11 · 19 Aug 2025) ───────────────────────────
-echo "[1/3] PLINK 1.9"
+echo "[1/4] PLINK 1.9"
 if [ "${OS}" = "linux" ]; then
   P1URL="https://s3.amazonaws.com/plink1-assets/plink_linux_x86_64_20250819.zip"
 else
@@ -67,7 +71,7 @@ echo "  OK: $("${EXE_DIR}/plink" --version 2>&1 | head -1)"
 
 # ── 2. PLINK 2  (alpha 7.1 · 4 May 2026) ─────────────────────────────────────
 echo ""
-echo "[2/3] PLINK 2"
+echo "[2/4] PLINK 2"
 if [ "${OS}" = "linux" ]; then
   if grep -q avx2 /proc/cpuinfo 2>/dev/null; then
     P2URL="https://s3.amazonaws.com/plink2-assets/alpha7/plink2_linux_avx2_20260504.zip"
@@ -81,7 +85,7 @@ else
     echo "  Apple Silicon (arm64) detected"
   else
     P2URL="https://s3.amazonaws.com/plink2-assets/alpha7/plink2_mac_avx2_20260504.zip"
-    echo "  Intel Mac detected — using AVX2 build"
+    echo "  Intel Mac — using AVX2 build"
   fi
 fi
 echo "  URL: ${P2URL}"
@@ -94,58 +98,97 @@ echo "  OK: $("${EXE_DIR}/plink2" --version 2>&1 | head -1)"
 # ── 3. GCTA  (v1.95.1 · 9 Feb 2026) ──────────────────────────────────────────
 # Source: https://yanglab.westlake.edu.cn/software/gcta/#Download
 echo ""
-echo "[3/3] GCTA v1.95.1"
-
+echo "[3/4] GCTA v1.95.1"
 if [ "${OS}" = "linux" ]; then
-  # Linux x86_64 — v1.95.1
   GCTA_URL="https://yanglab.westlake.edu.cn/software/gcta/bin/gcta-1.95.1-linux-x86_64.zip"
 else
   if [ "${ARCH}" = "arm64" ]; then
-    # macOS Apple Silicon — v1.95.1
     GCTA_URL="https://yanglab.westlake.edu.cn/software/gcta/bin/gcta-1.95.1-macOS-arm64.zip"
     echo "  Apple Silicon — using macOS arm64 build"
   else
-    # macOS Intel — latest available is v1.94.1 for x86_64
+    # v1.95.1 not yet available for Intel Mac; latest is v1.94.1
     GCTA_URL="https://yanglab.westlake.edu.cn/software/gcta/bin/gcta-1.94.1-macOS-x86_64.zip"
-    echo "  Intel Mac — using macOS x86_64 build (v1.94.1)"
+    echo "  Intel Mac — using v1.94.1 (latest available for x86_64)"
   fi
 fi
-
 echo "  URL: ${GCTA_URL}"
 if dl "${GCTA_URL}" "${EXE_DIR}/gcta.zip" 2>/dev/null; then
   unzip -q -o "${EXE_DIR}/gcta.zip" -d "${EXE_DIR}/gcta_tmp/"
-
-  # The binary may be named gcta64, gcta-1.95.1, or similar — find it
-  GCTA_BIN=$(find "${EXE_DIR}/gcta_tmp" -type f \( -name "gcta64" -o -name "gcta-*" \) | grep -v "\.txt\|\.pdf\|\.sh\|\.dylib\|\.so" | head -1)
-
+  # Binary may be named gcta64 or gcta-1.95.1 etc.
+  GCTA_BIN=$(find "${EXE_DIR}/gcta_tmp" -type f \
+    \( -name "gcta64" -o -name "gcta-*" \) \
+    ! -name "*.txt" ! -name "*.pdf" ! -name "*.sh" \
+    ! -name "*.dylib" ! -name "*.so" | head -1)
   if [ -n "${GCTA_BIN}" ]; then
     cp "${GCTA_BIN}" "${EXE_DIR}/gcta"
     chmod +x "${EXE_DIR}/gcta"
     echo "  OK: GCTA installed as ${EXE_DIR}/gcta"
   else
-    echo "  WARN: Could not locate gcta binary inside zip. Check ${EXE_DIR}/gcta_tmp/"
+    echo "  WARN: Could not locate gcta binary inside zip."
+    ls "${EXE_DIR}/gcta_tmp/" 2>/dev/null || true
   fi
-
   rm -rf "${EXE_DIR}/gcta.zip" "${EXE_DIR}/gcta_tmp/"
-
-  # macOS arm64: GCTA requires setting library env vars (see README in zip)
   if [ "${OS}" = "macos" ] && [ "${ARCH}" = "arm64" ]; then
-    echo ""
-    echo "  NOTE (macOS arm64): GCTA may require setting DYLD_LIBRARY_PATH."
-    echo "  If you see 'Library not loaded' errors, run:"
+    echo "  NOTE (macOS arm64): if you see 'Library not loaded', run:"
     echo "    export DYLD_LIBRARY_PATH=\"${EXE_DIR}:\$DYLD_LIBRARY_PATH\""
-    echo "  Or check the README inside the original zip for full instructions."
   fi
 else
   echo "  WARN: GCTA download failed."
-  echo "  Download manually from: https://yanglab.westlake.edu.cn/software/gcta/#Download"
-  echo "  Place the gcta binary in: ${EXE_DIR}/ and rename it to 'gcta'"
+  echo "  Download manually: https://yanglab.westlake.edu.cn/software/gcta/#Download"
 fi
 
-# ── macOS: remove Gatekeeper quarantine so binaries can actually run ──────────
+# ── 4. GCTB  (v2.5.5 · 4 Feb 2026) ───────────────────────────────────────────
+# Source: https://cnsgenomics.com/software/gctb/#Download
+# NOTE: v2.x is Linux-only. No macOS binary is provided for v2.x.
+echo ""
+echo "[4/4] GCTB v2.5.5"
+
+if [ "${OS}" = "linux" ]; then
+  GCTB_URL="https://gctbhub.cloud.edu.au/software/gctb/download/gctb_2.5.5_Linux.zip"
+  echo "  URL: ${GCTB_URL}"
+  if dl "${GCTB_URL}" "${EXE_DIR}/gctb.zip" 2>/dev/null; then
+    unzip -q -o "${EXE_DIR}/gctb.zip" -d "${EXE_DIR}/gctb_tmp/"
+    GCTB_BIN=$(find "${EXE_DIR}/gctb_tmp" -type f -name "gctb" | head -1)
+    if [ -n "${GCTB_BIN}" ]; then
+      cp "${GCTB_BIN}" "${EXE_DIR}/gctb"
+      chmod +x "${EXE_DIR}/gctb"
+      echo "  OK: GCTB installed as ${EXE_DIR}/gctb"
+    else
+      echo "  WARN: Could not find gctb binary inside zip."
+      ls "${EXE_DIR}/gctb_tmp/" 2>/dev/null || true
+    fi
+    rm -rf "${EXE_DIR}/gctb.zip" "${EXE_DIR}/gctb_tmp/"
+  else
+    echo "  WARN: GCTB download failed."
+    echo "  Download manually: https://cnsgenomics.com/software/gctb/#Download"
+  fi
+else
+  # macOS: no pre-built binary for v2.x — must compile from source
+  echo ""
+  echo "  ⚠  GCTB v2.x has no macOS binary — Linux only."
+  echo ""
+  echo "  Options for macOS users:"
+  echo "  ① Compile from source (requires CMake, gcc, Eigen3):"
+  echo "       git clone https://github.com/jianzeng/GCTB.git"
+  echo "       cd GCTB && mkdir build && cd build"
+  echo "       cmake .. -DCMAKE_BUILD_TYPE=Release"
+  echo "       make -j4"
+  echo "       cp gctb ${EXE_DIR}/gctb"
+  echo ""
+  echo "  ② Use a Linux machine / HPC / Docker for the SBayesC steps."
+  echo ""
+  echo "  ③ Install the old v1.0 Mac binary (limited features, missing SBayes):"
+  echo "       curl -fsSL -o /tmp/gctb_1.0_Mac.zip \\"
+  echo "         https://gctbhub.cloud.edu.au/software/gctb/download/gctb_1.0_Mac.zip"
+  echo "       unzip -q /tmp/gctb_1.0_Mac.zip -d ${EXE_DIR}/gctb_tmp/"
+  echo "       cp \$(find ${EXE_DIR}/gctb_tmp -name 'gctb') ${EXE_DIR}/gctb"
+  echo "       chmod +x ${EXE_DIR}/gctb"
+fi
+
+# ── macOS: clear Gatekeeper quarantine ────────────────────────────────────────
 if [ "${OS}" = "macos" ]; then
   echo ""
-  echo "  Clearing macOS Gatekeeper quarantine..."
+  echo "  Clearing macOS Gatekeeper quarantine on all binaries..."
   xattr -dr com.apple.quarantine "${EXE_DIR}/" 2>/dev/null || true
   echo "  Done"
 fi
@@ -155,13 +198,15 @@ echo ""
 echo "============================================================"
 echo "  Verification"
 echo "============================================================"
-all_ok=true
-for t in plink plink2 gcta; do
+for t in plink plink2 gcta gctb; do
   if [ -x "${EXE_DIR}/${t}" ]; then
     echo "  [OK] ${t}"
   else
-    echo "  [!!] ${t}  — not found at ${EXE_DIR}/${t}"
-    all_ok=false
+    if [ "${t}" = "gctb" ] && [ "${OS}" = "macos" ]; then
+      echo "  [--] gctb  — not installed (macOS: see instructions above)"
+    else
+      echo "  [!!] ${t}  — not found at ${EXE_DIR}/${t}"
+    fi
   fi
 done
 
@@ -169,8 +214,7 @@ echo ""
 echo "  Add exe/ to your PATH for this session:"
 echo "    export PATH=\"${EXE_DIR}:\$PATH\""
 echo ""
-echo "  To make it permanent, add the line above to:"
-echo "    macOS  → ~/.zshrc"
-echo "    Linux  → ~/.bashrc"
-echo "  then restart your terminal."
+echo "  To make it permanent:"
+echo "    macOS → add to ~/.zshrc"
+echo "    Linux → add to ~/.bashrc"
 echo "============================================================"
