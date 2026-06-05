@@ -1,123 +1,151 @@
 #!/usr/bin/env bash
 # =============================================================================
-# setup.sh  –  Download and install tools for the SISG 2026 PRS Practical
+# setup.sh  –  Download PLINK 1.9, PLINK 2, and GCTB
 #
-# Downloads into exe/ directory in the repo root.
+# Sources (checked June 2026):
+#   PLINK 1.9  https://www.cog-genomics.org/plink/1.9/
+#   PLINK 2.0  https://www.cog-genomics.org/plink/2.0/
+#   GCTB       https://cnsgenomics.com/software/gctb/#Download
+#
 # Usage:
-#   bash setup.sh             # auto-detect OS
-#   bash setup.sh linux       # force Linux binaries
-#   bash setup.sh macos       # force macOS binaries
+#   bash setup.sh            # auto-detect OS / chip
+#   bash setup.sh linux      # force Linux
+#   bash setup.sh macos      # force macOS
 # =============================================================================
 
 set -euo pipefail
-EXE_DIR="$(pwd)/exe"
+
+EXE_DIR="$(cd "$(dirname "$0")" && pwd)/exe"
 mkdir -p "${EXE_DIR}"
 
+# ── Detect OS ─────────────────────────────────────────────────────────────────
 OS="${1:-auto}"
 if [ "${OS}" = "auto" ]; then
   case "$(uname -s)" in
     Darwin*) OS="macos" ;;
     Linux*)  OS="linux" ;;
-    *) echo "Unsupported OS: $(uname -s). Specify 'linux' or 'macos'."; exit 1 ;;
+    *) echo "ERROR: Unknown OS. Specify 'linux' or 'macos'."; exit 1 ;;
   esac
 fi
 
+ARCH="$(uname -m)"
+
 echo "============================================================"
-echo "  SISG 2026 PRS Practical — Tool Setup"
-echo "  Target: ${EXE_DIR}"
-echo "  OS:     ${OS}"
+echo "  PLINK / GCTB Setup"
+echo "  Target : ${EXE_DIR}"
+echo "  OS     : ${OS}"
+echo "  Arch   : ${ARCH}"
 echo "============================================================"
 echo ""
 
-# ── Download helper: uses curl (macOS built-in) or wget (Linux) ───────────────
-download() {
-  local url="$1"
-  local out="$2"
+# ── Download helper: curl (macOS built-in) or wget ────────────────────────────
+dl() {
+  local url="$1" out="$2"
   if command -v curl &>/dev/null; then
-    curl -fsSL -o "${out}" "${url}"
+    curl -fsSL --retry 3 -o "${out}" "${url}"
   elif command -v wget &>/dev/null; then
-    wget -q -O "${out}" "${url}"
+    wget -q --tries=3 -O "${out}" "${url}"
   else
-    echo "ERROR: Neither curl nor wget found. Install one and retry."
+    echo "  ERROR: neither curl nor wget found."
+    echo "  Install: brew install curl  (macOS)  or  sudo apt install curl  (Linux)"
     exit 1
   fi
 }
 
-# ── PLINK 1.9 ─────────────────────────────────────────────────────────────────
-echo "[1/3] Installing PLINK 1.9..."
+# ── 1. PLINK 1.9  (stable beta 7.11 · 19 Aug 2025) ───────────────────────────
+echo "[1/3] PLINK 1.9"
+
 if [ "${OS}" = "linux" ]; then
-  PLINK_URL="https://s3.amazonaws.com/plink1-assets/plink_linux_x86_64_20231211.zip"
+  P1URL="https://s3.amazonaws.com/plink1-assets/plink_linux_x86_64_20250819.zip"
 else
-  PLINK_URL="https://s3.amazonaws.com/plink1-assets/plink_mac_20231211.zip"
+  P1URL="https://s3.amazonaws.com/plink1-assets/plink_mac_20250819.zip"
 fi
 
-download "${PLINK_URL}" "${EXE_DIR}/plink1.zip"
+echo "  URL: ${P1URL}"
+dl "${P1URL}" "${EXE_DIR}/plink1.zip"
 unzip -q -o "${EXE_DIR}/plink1.zip" plink -d "${EXE_DIR}/"
 chmod +x "${EXE_DIR}/plink"
-rm "${EXE_DIR}/plink1.zip"
-echo "  ✓ PLINK 1.9: ${EXE_DIR}/plink"
-"${EXE_DIR}/plink" --version 2>&1 | head -1
+rm -f "${EXE_DIR}/plink1.zip"
+echo "  OK: $("${EXE_DIR}/plink" --version 2>&1 | head -1)"
 
-# ── PLINK 2 ───────────────────────────────────────────────────────────────────
+# ── 2. PLINK 2  (alpha 7.1 · 4 May 2026) ─────────────────────────────────────
 echo ""
-echo "[2/3] Installing PLINK 2..."
+echo "[2/3] PLINK 2"
+
 if [ "${OS}" = "linux" ]; then
-  PLINK2_URL="https://s3.amazonaws.com/plink2-assets/alpha6/plink2_linux_x86_64_20250103.zip"
-else
-  # Detect Apple Silicon vs Intel
-  ARCH="$(uname -m)"
-  if [ "${ARCH}" = "arm64" ]; then
-    PLINK2_URL="https://s3.amazonaws.com/plink2-assets/alpha6/plink2_mac_arm64_20250103.zip"
+  if grep -q avx2 /proc/cpuinfo 2>/dev/null; then
+    P2URL="https://s3.amazonaws.com/plink2-assets/alpha7/plink2_linux_avx2_20260504.zip"
+    echo "  AVX2 CPU detected — using optimised build"
   else
-    PLINK2_URL="https://s3.amazonaws.com/plink2-assets/alpha6/plink2_mac_20250103.zip"
+    P2URL="https://s3.amazonaws.com/plink2-assets/alpha7/plink2_linux_x86_64_20260504.zip"
+  fi
+else
+  if [ "${ARCH}" = "arm64" ]; then
+    P2URL="https://s3.amazonaws.com/plink2-assets/alpha7/plink2_mac_arm64_20260504.zip"
+    echo "  Apple Silicon (arm64) detected"
+  else
+    P2URL="https://s3.amazonaws.com/plink2-assets/alpha7/plink2_mac_avx2_20260504.zip"
+    echo "  Intel Mac detected — using AVX2 build"
   fi
 fi
 
-download "${PLINK2_URL}" "${EXE_DIR}/plink2.zip"
+echo "  URL: ${P2URL}"
+dl "${P2URL}" "${EXE_DIR}/plink2.zip"
 unzip -q -o "${EXE_DIR}/plink2.zip" plink2 -d "${EXE_DIR}/"
 chmod +x "${EXE_DIR}/plink2"
-rm "${EXE_DIR}/plink2.zip"
-echo "  ✓ PLINK 2: ${EXE_DIR}/plink2"
-"${EXE_DIR}/plink2" --version 2>&1 | head -1
+rm -f "${EXE_DIR}/plink2.zip"
+echo "  OK: $("${EXE_DIR}/plink2" --version 2>&1 | head -1)"
 
-# ── GCTB ──────────────────────────────────────────────────────────────────────
+# ── 3. GCTB (v2.05 beta) ──────────────────────────────────────────────────────
 echo ""
-echo "[3/3] Installing GCTB..."
+echo "[3/3] GCTB"
+
 if [ "${OS}" = "linux" ]; then
-  GCTB_URL="https://cnsgenomics.com/software/gctb/download/gctb_2.05beta_Linux.zip"
+  GURL="https://cnsgenomics.com/software/gctb/download/gctb_2.05beta_Linux.zip"
 else
-  GCTB_URL="https://cnsgenomics.com/software/gctb/download/gctb_2.05beta_Mac.zip"
+  GURL="https://cnsgenomics.com/software/gctb/download/gctb_2.05beta_Mac.zip"
 fi
 
-download "${GCTB_URL}" "${EXE_DIR}/gctb.zip" || {
-  echo "  Warning: GCTB download failed. Download manually from:"
-  echo "  https://cnsgenomics.com/software/gctb/#Download"
-}
-
-if [ -f "${EXE_DIR}/gctb.zip" ]; then
+echo "  URL: ${GURL}"
+if dl "${GURL}" "${EXE_DIR}/gctb.zip" 2>/dev/null; then
   unzip -q -o "${EXE_DIR}/gctb.zip" -d "${EXE_DIR}/gctb_tmp/"
-  find "${EXE_DIR}/gctb_tmp" -name "gctb" -exec cp {} "${EXE_DIR}/gctb" \;
+  find "${EXE_DIR}/gctb_tmp" -type f -name "gctb" -exec cp {} "${EXE_DIR}/gctb" \;
   chmod +x "${EXE_DIR}/gctb"
   rm -rf "${EXE_DIR}/gctb.zip" "${EXE_DIR}/gctb_tmp/"
-  echo "  ✓ GCTB: ${EXE_DIR}/gctb"
-  "${EXE_DIR}/gctb" --version 2>&1 | head -1 || true
+  echo "  OK: GCTB installed"
+else
+  echo "  WARN: GCTB download failed."
+  echo "  Manual download: https://cnsgenomics.com/software/gctb/#Download"
+  echo "  Place the gctb binary in: ${EXE_DIR}/"
 fi
 
-# ── macOS: remove quarantine flag if needed ───────────────────────────────────
+# ── macOS: clear Gatekeeper quarantine so binaries can run ────────────────────
 if [ "${OS}" = "macos" ]; then
   echo ""
-  echo "  Removing macOS quarantine flags..."
+  echo "  Clearing macOS quarantine flags..."
   xattr -dr com.apple.quarantine "${EXE_DIR}/" 2>/dev/null || true
-  echo "  ✓ Done"
+  echo "  Done"
 fi
 
-# ── Summary ───────────────────────────────────────────────────────────────────
+# ── Final check ───────────────────────────────────────────────────────────────
 echo ""
 echo "============================================================"
-echo "  Setup complete! Add exe/ to your PATH:"
+echo "  Verification"
+echo "============================================================"
+ok=true
+for t in plink plink2 gctb; do
+  if [ -x "${EXE_DIR}/${t}" ]; then
+    echo "  [OK] ${t}"
+  else
+    echo "  [!!] ${t}  — not found"
+    ok=false
+  fi
+done
+
 echo ""
-echo "    export PATH=\"\$PWD/exe:\$PATH\""
+echo "  To use the tools in this session, run:"
+echo "    export PATH=\"${EXE_DIR}:\$PATH\""
 echo ""
-echo "  Or set per-session in your shell config (~/.zshrc or ~/.bash_profile):"
-echo "    export PATH=\"$(pwd)/exe:\$PATH\""
+echo "  To make permanent, add to ~/.zshrc (macOS) or ~/.bashrc (Linux):"
+echo "    export PATH=\"${EXE_DIR}:\$PATH\""
 echo "============================================================"
