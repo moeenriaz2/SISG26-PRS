@@ -310,42 +310,40 @@ cd practical</code></pre>
 </div>
 
 <h3>1 · Validation Genotypes — 1000 Genomes Project (1KG)</h3>
-<p>We use genotype data for <strong>N = 2,504 samples</strong> from the 1000 Genomes Project Phase 3, filtered to <strong>HapMap3 SNPs on chromosome 20</strong>. Five super-populations are included: EUR (N=503), EAS (N=504), SAS (N=489), AMR (N=347), AFR (N=661).</p>
+<p>We use genotype data for <strong>N = 2,504 samples</strong> from the 1000 Genomes Project Phase 3, filtered to <strong>HapMap3 SNPs on chromosome 20</strong>. Five super-populations: EUR (503), EAS (504), SAS (489), AMR (347), AFR (661).</p>
 
-<p>Download pre-processed PLINK binary files directly:</p>
-<a class="dl-btn" href="https://github.com/moeenriaz2/SISG26-PRS/releases/download/v1.0/1kg_hm3.tar.gz">
-  <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 12l-4-4h2.5V4h3v4H12L8 12z"/><rect y="13" width="16" height="2" rx="1"/></svg>
-  1kg_hm3.bed / .bim / .fam (~130 MB)
-</a>
-<a class="dl-btn secondary" href="https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/release/20130502/" target="_blank">
-  🌍 EBI 1KG FTP (original VCFs)
-</a>
+<p>Run the download script included in the repository — it handles everything automatically:</p>
+<div class="code-header"><span>bash</span><span class="lang">Terminal — ~20 min, requires plink2</span></div>
+<pre class="language-bash"><code class="language-bash"># From the root of the cloned repo:
+bash data/download_1kg.sh</code></pre>
 
-<p>Or build from scratch from the EBI FTP using the included download script:</p>
-<div class="code-header"><span>bash</span><span class="lang">Terminal</span></div>
-<pre class="language-bash"><code class="language-bash"># Download and process chr20 from EBI 1000 Genomes FTP
-bash data/download_1kg.sh
+<p>The script downloads chr20 from the EBI 1000 Genomes FTP, filters to HapMap3 SNPs, converts to PLINK format, and writes ancestry ID files. View the script:
+<a href="https://github.com/moeenriaz2/SISG26-PRS/blob/main/data/download_1kg.sh" target="_blank">data/download_1kg.sh</a></p>
 
-# This script will:
-#   1. Download ALL.chr20.phase3.vcf.gz from EBI FTP
-#   2. Download the HapMap3 SNP list
-#   3. Filter with PLINK2 → 1kg_hm3.bed / .bim / .fam
-#   4. Write ancestry IDs: EUR.id, EAS.id, SAS.id, AMR.id, AFR.id</code></pre>
+<p><strong>Output files created:</strong> <code>1kg_hm3.bed</code>, <code>1kg_hm3.bim</code>, <code>1kg_hm3.fam</code>, <code>EUR.id</code>, <code>EAS.id</code>, <code>SAS.id</code>, <code>AMR.id</code>, <code>AFR.id</code></p>
 
 <h3>2 · GWAS Summary Statistics (Simulated)</h3>
 <p>Summary statistics for two simulated traits were generated using <code>fastGWA</code> on chromosome 20 SNPs (M = 32,260) in N = 348,501 unrelated UK Biobank EUR participants. Both traits have h²_SNP = 0.2. <strong>Trait 2 is more polygenic than Trait 1.</strong></p>
-<a class="dl-btn" href="https://github.com/moeenriaz2/SISG26-PRS/releases/download/v1.0/gwas_summary_stats.tar.gz">
-  <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 12l-4-4h2.5V4h3v4H12L8 12z"/><rect y="13" width="16" height="2" rx="1"/></svg>
-  Trait1.fastGWA + Trait2.fastGWA (~4 MB)
+<a class="dl-btn" href="https://joellembatchou.github.io/SISG2025_Association_Mapping/QG3_Polygenic_Scores_practical.html" target="_blank">
+  📄 Original SISG 2025 Practical (data source)
 </a>
+<a class="dl-btn secondary" href="https://github.com/moeenriaz2/SISG26-PRS/blob/main/data/README.md" target="_blank">
+  📋 Data README — formats &amp; simulation instructions
+</a>
+<div class="card-gold" style="background:#fffbeb;border-left:4px solid #F59E0B;padding:12px 16px;margin:12px 0;border-radius:4px;font-size:13px">
+  <strong>⚠ Note:</strong> These summary statistics are simulated from UKB data and distributed via the SISG course server.
+  If you are an instructor, upload <code>Trait1.fastGWA</code> and <code>Trait2.fastGWA</code> to
+  <a href="https://github.com/moeenriaz2/SISG26-PRS/releases/new" target="_blank">GitHub Releases → v1.0</a>
+  and the download buttons will activate automatically.
+</div>
 <p>The <code>.fastGWA</code> format has columns: <code>CHR SNP POS A1 A2 N AF1 BETA SE P</code></p>
 <p>A GCTA <code>.ma</code> format version is also provided (required for GCTA SBLUP and GCTB SBayesC):</p>
 <p>Format: <code>SNP A1 A2 freq b se p N</code></p>
 
 <h3>3 · Phenotypes &amp; Ancestry Labels</h3>
-<a class="dl-btn" href="https://github.com/moeenriaz2/SISG26-PRS/releases/download/v1.0/phenotypes.tar.gz">
+<a class="dl-btn" href="https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/release/20130502/integrated_call_samples_v3.20200731.ALL.ped" target="_blank">
   <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 12l-4-4h2.5V4h3v4H12L8 12z"/><rect y="13" width="16" height="2" rx="1"/></svg>
-  Phenotypes + Ancestry Files (~0.2 MB)
+  1KG Sample Ancestry File — EBI FTP
 </a>
 
 <table>
@@ -360,12 +358,12 @@ bash data/download_1kg.sh
 
 <h3>4 · LD Matrices for SBayes C</h3>
 <p>GCTB requires pre-computed LD matrices in its own sparse format. We provide 38 LD block matrices for chromosome 20 (computed in N = 348,501 UKB EUR samples):</p>
-<a class="dl-btn" href="https://github.com/moeenriaz2/SISG26-PRS/releases/download/v1.0/ldm_chr20.tar.gz">
+<a class="dl-btn" href="https://zenodo.org/record/3350914" target="_blank">
   <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 12l-4-4h2.5V4h3v4H12L8 12z"/><rect y="13" width="16" height="2" rx="1"/></svg>
-  LD Matrices for GCTB (~500 MB)
+  Shrunk Sparse LD Matrices — Zenodo (1.1M SNPs, UKB EUR N=50k)
 </a>
 <a class="dl-btn secondary" href="https://cnsgenomics.com/software/gctb/#Download" target="_blank">
-  🔗 GCTB Pre-computed LDMs
+  🔗 GCTB website — all LD matrix options
 </a>
 <p>The file <code>ldm/mldm.txt</code> lists the paths to all 38 block matrices — this is passed to GCTB via <code>--mldm</code>.</p>
 
