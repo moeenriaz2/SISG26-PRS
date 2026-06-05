@@ -18,7 +18,7 @@ if [ "${OS}" = "auto" ]; then
   case "$(uname -s)" in
     Darwin*) OS="macos" ;;
     Linux*)  OS="linux" ;;
-    *)       echo "Unsupported OS: $(uname -s). Specify 'linux' or 'macos'."; exit 1 ;;
+    *) echo "Unsupported OS: $(uname -s). Specify 'linux' or 'macos'."; exit 1 ;;
   esac
 fi
 
@@ -29,6 +29,20 @@ echo "  OS:     ${OS}"
 echo "============================================================"
 echo ""
 
+# ── Download helper: uses curl (macOS built-in) or wget (Linux) ───────────────
+download() {
+  local url="$1"
+  local out="$2"
+  if command -v curl &>/dev/null; then
+    curl -fsSL -o "${out}" "${url}"
+  elif command -v wget &>/dev/null; then
+    wget -q -O "${out}" "${url}"
+  else
+    echo "ERROR: Neither curl nor wget found. Install one and retry."
+    exit 1
+  fi
+}
+
 # ── PLINK 1.9 ─────────────────────────────────────────────────────────────────
 echo "[1/3] Installing PLINK 1.9..."
 if [ "${OS}" = "linux" ]; then
@@ -37,7 +51,7 @@ else
   PLINK_URL="https://s3.amazonaws.com/plink1-assets/plink_mac_20231211.zip"
 fi
 
-wget -q -O "${EXE_DIR}/plink1.zip" "${PLINK_URL}"
+download "${PLINK_URL}" "${EXE_DIR}/plink1.zip"
 unzip -q -o "${EXE_DIR}/plink1.zip" plink -d "${EXE_DIR}/"
 chmod +x "${EXE_DIR}/plink"
 rm "${EXE_DIR}/plink1.zip"
@@ -50,10 +64,16 @@ echo "[2/3] Installing PLINK 2..."
 if [ "${OS}" = "linux" ]; then
   PLINK2_URL="https://s3.amazonaws.com/plink2-assets/alpha6/plink2_linux_x86_64_20250103.zip"
 else
-  PLINK2_URL="https://s3.amazonaws.com/plink2-assets/alpha6/plink2_mac_arm64_20250103.zip"
+  # Detect Apple Silicon vs Intel
+  ARCH="$(uname -m)"
+  if [ "${ARCH}" = "arm64" ]; then
+    PLINK2_URL="https://s3.amazonaws.com/plink2-assets/alpha6/plink2_mac_arm64_20250103.zip"
+  else
+    PLINK2_URL="https://s3.amazonaws.com/plink2-assets/alpha6/plink2_mac_20250103.zip"
+  fi
 fi
 
-wget -q -O "${EXE_DIR}/plink2.zip" "${PLINK2_URL}"
+download "${PLINK2_URL}" "${EXE_DIR}/plink2.zip"
 unzip -q -o "${EXE_DIR}/plink2.zip" plink2 -d "${EXE_DIR}/"
 chmod +x "${EXE_DIR}/plink2"
 rm "${EXE_DIR}/plink2.zip"
@@ -69,8 +89,8 @@ else
   GCTB_URL="https://cnsgenomics.com/software/gctb/download/gctb_2.05beta_Mac.zip"
 fi
 
-wget -q -O "${EXE_DIR}/gctb.zip" "${GCTB_URL}" || {
-  echo "  Warning: GCTB direct download failed. Download manually from:"
+download "${GCTB_URL}" "${EXE_DIR}/gctb.zip" || {
+  echo "  Warning: GCTB download failed. Download manually from:"
   echo "  https://cnsgenomics.com/software/gctb/#Download"
 }
 
@@ -83,6 +103,14 @@ if [ -f "${EXE_DIR}/gctb.zip" ]; then
   "${EXE_DIR}/gctb" --version 2>&1 | head -1 || true
 fi
 
+# ── macOS: remove quarantine flag if needed ───────────────────────────────────
+if [ "${OS}" = "macos" ]; then
+  echo ""
+  echo "  Removing macOS quarantine flags..."
+  xattr -dr com.apple.quarantine "${EXE_DIR}/" 2>/dev/null || true
+  echo "  ✓ Done"
+fi
+
 # ── Summary ───────────────────────────────────────────────────────────────────
 echo ""
 echo "============================================================"
@@ -90,8 +118,6 @@ echo "  Setup complete! Add exe/ to your PATH:"
 echo ""
 echo "    export PATH=\"\$PWD/exe:\$PATH\""
 echo ""
-echo "  Or set variables in your shell scripts:"
-echo "    PLINK=\$PWD/exe/plink"
-echo "    PLINK2=\$PWD/exe/plink2"
-echo "    GCTB=\$PWD/exe/gctb"
+echo "  Or set per-session in your shell config (~/.zshrc or ~/.bash_profile):"
+echo "    export PATH=\"$(pwd)/exe:\$PATH\""
 echo "============================================================"
