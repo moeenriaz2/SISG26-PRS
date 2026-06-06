@@ -1,143 +1,133 @@
 #!/usr/bin/env bash
 # =============================================================================
-# download_1kg.sh  –  Download and process 1000 Genomes chr20 data
+# download_1kg.sh
+# Download and process 1000 Genomes Project Phase 3 chr20 data
+# filtered to HapMap3 SNPs for the SISG 2026 PRS Practical
 #
-# What this script does:
-#   1. Downloads chr20 VCF from EBI 1000 Genomes Phase 3 FTP
-#   2. Downloads HapMap3 SNP list (for filtering)
-#   3. Downloads sample metadata (ancestry labels)
-#   4. Converts to PLINK1.9 binary format, filtered to HapMap3 SNPs
-#   5. Writes ancestry-stratified sample ID files
+# Usage (from repo root):
+#   bash data/download_1kg.sh              # output → practical/
+#   bash data/download_1kg.sh /some/dir    # output → /some/dir
 #
-# Requirements: plink2, wget (or curl), bcftools (optional, for VCF filtering)
-# Runtime: ~20–40 minutes depending on internet speed
-# Disk space: ~2 GB temporary (VCF) → ~200 MB final (PLINK format)
-#
-# Usage:
-#   bash data/download_1kg.sh           # runs from repo root
-#   bash data/download_1kg.sh --outdir practical/
+# Requirements: plink2 must be on PATH (run bash setup.sh first)
+# Time: ~20 min depending on internet speed
+# Disk: ~1 GB during processing, ~130 MB final
 # =============================================================================
 
 set -euo pipefail
 
-# ── Default paths ─────────────────────────────────────────────────────────────
-OUTDIR="${1:-data}"
-PLINK2="${PLINK2:-plink2}"
-PLINK="${PLINK:-plink}"
-
+# ── Output directory ──────────────────────────────────────────────────────────
+OUTDIR="${1:-practical}"
 mkdir -p "${OUTDIR}"
 cd "${OUTDIR}"
 
 echo "============================================================"
-echo "  1000 Genomes Chr20 Download + Processing"
-echo "  Output directory: $(pwd)"
+echo "  SISG 2026 PRS Practical — 1000 Genomes Data Download"
+echo "  Output: $(pwd)"
 echo "============================================================"
 echo ""
 
-# ── 1. Download chr20 VCF from EBI FTP ───────────────────────────────────────
-echo "[1/6] Downloading chr20 VCF from 1000 Genomes EBI FTP..."
-VCF_URL="https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/release/20130502/ALL.chr20.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz"
-VCF_FILE="ALL.chr20.phase3.vcf.gz"
+# ── Download helper: curl (Mac built-in) or wget (Linux) ─────────────────────
+download() {
+  local url="$1"
+  local out="$2"
+  echo "  Downloading $(basename ${out}) ..."
+  if command -v curl &>/dev/null; then
+    curl -fsSL --retry 3 --retry-delay 5 -o "${out}" "${url}"
+  elif command -v wget &>/dev/null; then
+    wget -q --tries=3 -O "${out}" "${url}"
+  else
+    echo "ERROR: Neither curl nor wget found. Please install one and retry."
+    exit 1
+  fi
+}
 
-if [ ! -f "${VCF_FILE}" ]; then
-  wget -c -O "${VCF_FILE}" "${VCF_URL}"
-  wget -c -O "${VCF_FILE}.tbi" "${VCF_URL}.tbi"
-  echo "  Downloaded: ${VCF_FILE}"
-else
-  echo "  Found (skipping): ${VCF_FILE}"
+# ── Check plink2 ──────────────────────────────────────────────────────────────
+if ! command -v plink2 &>/dev/null; then
+  # try local exe/ directory
+  REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+  if [ -f "${REPO_ROOT}/exe/plink2" ]; then
+    export PATH="${REPO_ROOT}/exe:$PATH"
+  else
+    echo "ERROR: plink2 not found. Run 'bash setup.sh' first."
+    exit 1
+  fi
 fi
 
-# ── 2. Download sample info (ancestry labels) ─────────────────────────────────
+# ── URLs ──────────────────────────────────────────────────────────────────────
+EBI_BASE="https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/release/20130502"
+VCF_URL="${EBI_BASE}/ALL.chr20.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz"
+TBI_URL="${VCF_URL}.tbi"
+PANEL_URL="${EBI_BASE}/integrated_call_samples_v3.20200731.ALL.ped"
+HM3_URL="https://zenodo.org/record/7768714/files/hapmap3_variants_hm3.txt.gz"
+
+# ── Step 1: Download VCF ──────────────────────────────────────────────────────
+echo "[1/5] Downloading chr20 VCF from EBI 1000 Genomes FTP..."
+echo "      (this is the large file — ~800 MB, ~10-15 min)"
+download "${VCF_URL}" "ALL.chr20.vcf.gz"
+download "${TBI_URL}" "ALL.chr20.vcf.gz.tbi"
+echo "      Done."
 echo ""
-echo "[2/6] Downloading sample metadata..."
-PANEL_URL="https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/release/20130502/integrated_call_samples_v3.20200731.ALL.ped"
-PANEL_FILE="integrated_call_samples.ped"
 
-if [ ! -f "${PANEL_FILE}" ]; then
-  wget -c -O "${PANEL_FILE}" "${PANEL_URL}"
-fi
-
-# Create ancestry-labelled file matching the format expected by the practical
-echo "sample super_pop pop gender" > 1kg-sample-2504-phased.txt
-awk 'NR>1 && $7!="" {print $2, $7, $7, ($5==1?"male":"female")}' \
-  "${PANEL_FILE}" >> 1kg-sample-2504-phased.txt
-echo "  Created: 1kg-sample-2504-phased.txt"
-
-# ── 3. Download HapMap3 SNP list ──────────────────────────────────────────────
+# ── Step 2: Download HapMap3 SNP list ─────────────────────────────────────────
+echo "[2/5] Downloading HapMap3 SNP list..."
+download "${HM3_URL}" "hapmap3_variants.txt.gz"
+# Extract just the variant IDs (rsIDs, one per line)
+gunzip -c hapmap3_variants.txt.gz | awk 'NR>1 {print $1}' > hm3_snps.txt
+echo "      $(wc -l < hm3_snps.txt) HapMap3 SNPs loaded."
 echo ""
-echo "[3/6] Downloading HapMap3 SNP list..."
-HM3_URL="https://zenodo.org/record/7768714/files/hm3_no_MHC.txt"
-HM3_FILE="hapmap3_snps.txt"
 
-if [ ! -f "${HM3_FILE}" ]; then
-  # Try zenodo first
-  wget -c -O "${HM3_FILE}" "${HM3_URL}" 2>/dev/null || \
-  # Fallback: use bigsnpr reference
-  wget -c -O "${HM3_FILE}" \
-    "https://ndownloader.figshare.com/files/37802721" 2>/dev/null || \
-  echo "  Warning: Could not download HapMap3 list; will use all biallelic SNPs"
-fi
-
-# ── 4. Convert VCF → PLINK format ────────────────────────────────────────────
-echo ""
-echo "[4/6] Converting VCF to PLINK format..."
-
-# Build plink2 command
-PLINK2_CMD="${PLINK2} \
-  --vcf ${VCF_FILE} \
+# ── Step 3: Convert VCF → PLINK, filter to HapMap3 ───────────────────────────
+echo "[3/5] Converting VCF to PLINK format and filtering to HapMap3 SNPs..."
+plink2 \
+  --vcf ALL.chr20.vcf.gz \
+  --extract hm3_snps.txt \
   --chr 20 \
-  --snps-only just-acgt \
   --max-alleles 2 \
-  --min-alleles 2 \
-  --maf 0.01 \
-  --geno 0.05 \
-  --hwe 1e-6 \
   --make-bed \
-  --out 1kg_chr20_all"
-
-# Add HapMap3 SNP filter if available
-if [ -f "${HM3_FILE}" ]; then
-  PLINK2_CMD="${PLINK2_CMD} --extract ${HM3_FILE}"
-  echo "  Filtering to HapMap3 SNPs"
-fi
-
-${PLINK2_CMD}
-echo "  Created: 1kg_chr20_all.bed/.bim/.fam"
-
-# Rename to match practical naming convention
-cp 1kg_chr20_all.bed 1kg_hm3.bed
-cp 1kg_chr20_all.bim 1kg_hm3.bim
-cp 1kg_chr20_all.fam 1kg_hm3.fam
-echo "  Renamed to: 1kg_hm3.bed/.bim/.fam"
-
-# ── 5. Create ancestry-stratified sample ID files ─────────────────────────────
+  --out 1kg_hm3 \
+  --threads 4 \
+  --silent
+echo "      PLINK files created: 1kg_hm3.bed / .bim / .fam"
+SNP_COUNT=$(wc -l < 1kg_hm3.bim)
+SAMPLE_COUNT=$(wc -l < 1kg_hm3.fam)
+echo "      Variants: ${SNP_COUNT}   Samples: ${SAMPLE_COUNT}"
 echo ""
-echo "[5/6] Creating ancestry ID files..."
 
-for SUPERPOP in EUR EAS SAS AMR AFR; do
-  awk -v pop="${SUPERPOP}" 'NR>1 && $2==pop {print $1, $1}' \
-    1kg-sample-2504-phased.txt > "${SUPERPOP}.id"
-  N=$(wc -l < "${SUPERPOP}.id")
-  echo "  ${SUPERPOP}.id: ${N} samples"
+# ── Step 4: Download ancestry panel and write population ID files ─────────────
+echo "[4/5] Downloading sample ancestry panel and writing population ID files..."
+download "${PANEL_URL}" "integrated_call_samples.ped"
+
+# Write FID IID files for each super-population
+# Column 7 in the .ped file = super-population (EUR, EAS, SAS, AMR, AFR)
+for pop in EUR EAS SAS AMR AFR; do
+  awk -v p="${pop}" 'NR>1 && $7==p {print $1, $2}' integrated_call_samples.ped > "${pop}.id"
+  COUNT=$(wc -l < "${pop}.id")
+  echo "      ${pop}: ${COUNT} samples → ${pop}.id"
 done
+echo ""
 
-# ── 6. Summary ────────────────────────────────────────────────────────────────
+# ── Step 5: Clean up large intermediate files ─────────────────────────────────
+echo "[5/5] Cleaning up intermediate files..."
+rm -f ALL.chr20.vcf.gz ALL.chr20.vcf.gz.tbi hapmap3_variants.txt.gz hm3_snps.txt integrated_call_samples.ped
+echo "      Done."
 echo ""
-echo "[6/6] Done! Summary of created files:"
-echo ""
-echo "  Genotypes (PLINK format):"
-ls -lh 1kg_hm3.bed 1kg_hm3.bim 1kg_hm3.fam 2>/dev/null || true
-echo ""
-echo "  SNP count:"
-wc -l < 1kg_hm3.bim
-echo ""
-echo "  Ancestry files:"
-for SUPERPOP in EUR EAS SAS AMR AFR; do
-  echo "    ${SUPERPOP}.id: $(wc -l < ${SUPERPOP}.id 2>/dev/null || echo 0) samples"
-done
 
-echo ""
+# ── Summary ───────────────────────────────────────────────────────────────────
 echo "============================================================"
-echo "  Next step: download GWAS summary stats from GitHub"
-echo "  https://github.com/moeenriaz2/SISG26-PRS/releases/"
+echo "  Download complete! Files in: $(pwd)"
+echo "============================================================"
+echo ""
+echo "  Genotype files:"
+echo "    1kg_hm3.bed  1kg_hm3.bim  1kg_hm3.fam"
+echo "    Variants: ${SNP_COUNT}   Samples: ${SAMPLE_COUNT}"
+echo ""
+echo "  Ancestry ID files:"
+echo "    EUR.id  EAS.id  SAS.id  AMR.id  AFR.id"
+echo ""
+echo "  Next step: download the remaining data files from the release:"
+echo "    wget https://github.com/moeenriaz2/SISG26-PRS/releases/download/v1.0/gwas_summary_stats.tar.gz"
+echo "    wget https://github.com/moeenriaz2/SISG26-PRS/releases/download/v1.0/phenotypes.tar.gz"
+echo "    wget https://github.com/moeenriaz2/SISG26-PRS/releases/download/v1.0/ldm_chr20.tar.gz"
+echo ""
+echo "  Then open: practical.html"
 echo "============================================================"
