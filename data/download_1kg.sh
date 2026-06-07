@@ -56,7 +56,7 @@ fi
 EBI_BASE="https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/release/20130502"
 VCF_URL="${EBI_BASE}/ALL.chr20.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz"
 TBI_URL="${VCF_URL}.tbi"
-PANEL_URL="${EBI_BASE}/integrated_call_samples_v3.20200731.ALL.ped"
+PANEL_URL="${EBI_BASE}/integrated_call_samples_v3.20130502.ALL.panel"
 
 # ── Step 1: Download VCF ─────────────────────────────────────────────────────
 echo "[1/3] Downloading chr20 VCF from EBI 1000 Genomes FTP..."
@@ -70,13 +70,16 @@ echo ""
 echo "[2/3] Converting VCF to PLINK format..."
 plink2 \
   --vcf ALL.chr20.vcf.gz \
-  --const-fid \
+  --double-id \
+  --set-all-var-ids '@:#' \
+  --new-id-max-allele-len 404 \
+  --keep-allele-order \
   --chr 20 \
   --max-alleles 2 \
+  --rm-dup exclude-mismatch \
   --make-bed \
   --out 1kg_hm3 \
-  --threads 4 \
-  --silent
+  --threads 8
 echo "      Created: 1kg_hm3.bed / .bim / .fam"
 SNP_COUNT=$(wc -l < 1kg_hm3.bim | tr -d ' ')
 SAMPLE_COUNT=$(wc -l < 1kg_hm3.fam | tr -d ' ')
@@ -88,7 +91,7 @@ echo "[3/3] Downloading sample panel and writing ancestry ID files..."
 download "${PANEL_URL}" "integrated_call_samples.ped"
 
 for pop in EUR EAS SAS AMR AFR; do
-  awk -v p="${pop}" 'NR>1 && $7==p {print $1, $2}' integrated_call_samples.ped > "${pop}.id"
+  awk -v p="${pop}" 'NR>1 && $3==p {print $1, $1}' integrated_call_samples.ped > "${pop}.id"
   COUNT=$(wc -l < "${pop}.id" | tr -d ' ')
   echo "      ${pop}: ${COUNT} samples → ${pop}.id"
 done
