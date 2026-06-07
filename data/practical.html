@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SISG 2026 QG3 · Polygenic Risk Scores Practical</title>
+<style>
+  :root {
+    --navy: #1a2744;
+    --teal: #00a896;
+    --teal-light: #e0f5f2;
+    --slate: #4a5568;
+    --light-bg: #f4f7fa;
+    --white: #ffffff;
+    --warn-bg: #fffbeb;
+    --warn-border: #fcd34d;
+    --border: #e2e8f0;
+    --text: #1a202c;
+    --text-secondary: #718096;
+    --bash-bg: #0f172a;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Georgia', serif; color: var(--text); background: var(--white); line-height: 1.7; }
+  a { color: var(--teal); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  nav { background: var(--navy); color: white; padding: 0; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
+  .nav-inner { max-width: 1100px; margin: 0 auto; display: flex; align-items: stretch; flex-wrap: wrap; }
+  .nav-brand { padding: 0.6rem 1.2rem; font-size: 0.85rem; font-weight: 600; color: #a0c4ff; border-right: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; }
+  .nav-brand span { color: white; margin-left: 0.4rem; }
+  .nav-links { display: flex; flex-wrap: wrap; }
+  .nav-section { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; color: rgba(255,255,255,0.4); padding: 0.3rem 1rem 0; }
+  .nav-links a { color: rgba(255,255,255,0.8); font-size: 0.8rem; padding: 0 0.8rem; display: flex; align-items: center; border-left: 1px solid rgba(255,255,255,0.06); transition: background 0.15s; height: 44px; }
+  .nav-links a:hover { background: rgba(255,255,255,0.08); text-decoration: none; color: white; }
+  .nav-ext { margin-left: auto; display: flex; align-items: center; padding: 0 0.8rem; gap: 0.5rem; }
+  .nav-ext a { color: rgba(255,255,255,0.6); font-size: 0.75rem; padding: 0.25rem 0.6rem; border: 1px solid rgba(255,255,255,0.15); border-radius: 4px; }
+  .nav-ext a:hover { background: rgba(255,255,255,0.1); color: white; text-decoration: none; }
+
+  .hero { background: linear-gradient(135deg, var(--navy) 0%, #2d3f6e 100%); color: white; padding: 3rem 1.5rem 2.5rem; text-align: center; }
+  .hero-badge { display: inline-block; background: rgba(0,168,150,0.25); border: 1px solid rgba(0,168,150,0.5); color: #7ef0e4; font-size: 0.75rem; font-family: monospace; padding: 0.25rem 0.8rem; border-radius: 20px; margin-bottom: 1rem; letter-spacing: 0.05em; }
+  .hero h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.75rem; }
+  .hero-meta { font-size: 0.85rem; color: rgba(255,255,255,0.6); margin-bottom: 1.2rem; }
+  .hero-tags { display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap; }
+  .tag { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: rgba(255,255,255,0.8); font-size: 0.75rem; padding: 0.2rem 0.7rem; border-radius: 12px; }
+
+  .container { max-width: 900px; margin: 0 auto; padding: 2.5rem 1.5rem; }
+  h2 { font-size: 1.5rem; color: var(--navy); margin: 2.5rem 0 1rem; padding-bottom: 0.5rem; border-bottom: 2px solid var(--teal); }
+  h3 { font-size: 1.15rem; color: var(--navy); margin: 1.8rem 0 0.75rem; }
+  h4 { font-size: 1rem; color: var(--slate); margin: 1.2rem 0 0.5rem; }
+  p { margin-bottom: 0.9rem; }
+
+  .part-badge { display: inline-flex; align-items: center; justify-content: center; width: 2rem; height: 2rem; background: var(--teal); color: white; border-radius: 50%; font-weight: 700; font-size: 0.9rem; margin-right: 0.5rem; vertical-align: middle; }
+
+  table { width: 100%; border-collapse: collapse; margin: 1rem 0 1.5rem; font-size: 0.88rem; }
+  th { background: var(--navy); color: white; padding: 0.6rem 0.9rem; text-align: left; font-weight: 600; }
+  td { padding: 0.55rem 0.9rem; border-bottom: 1px solid var(--border); }
+  tr:nth-child(even) td { background: var(--light-bg); }
+  tr:last-child td { border-bottom: none; }
+
+  .code-block { margin: 1rem 0; border-radius: 8px; overflow: hidden; }
+  .code-header { display: flex; justify-content: space-between; align-items: center; padding: 0.4rem 0.9rem; font-size: 0.72rem; font-family: monospace; font-weight: 600; }
+  .code-header.bash { background: #0f172a; color: #64748b; }
+  .code-header.r { background: #1e3a5f; color: #93c5fd; }
+  .lang { color: rgba(255,255,255,0.35); }
+  pre { margin: 0; padding: 1rem 1.1rem; overflow-x: auto; font-size: 0.82rem; line-height: 1.55; }
+  pre.bash { background: var(--bash-bg); color: #e2e8f0; }
+  pre.r-code { background: #1a3050; color: #dbeafe; }
+  pre.dir { background: #1e293b; color: #94a3b8; }
+  code { font-family: 'JetBrains Mono','Fira Code',monospace; }
+  p code, li code, td code { background: #f1f5f9; color: #e11d48; padding: 0.1em 0.35em; border-radius: 3px; font-size: 0.85em; }
+
+  .callout { border-radius: 8px; padding: 1rem 1.2rem; margin: 1.2rem 0; border-left: 4px solid; }
+  .callout-warn { background: var(--warn-bg); border-color: #f59e0b; }
+  .callout-info { background: var(--teal-light); border-color: var(--teal); }
+  .callout-alt  { background: #f0f4ff; border-color: #6366f1; }
+  .callout-title { font-weight: 700; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.5rem; }
+  .callout-warn .callout-title { color: #92400e; }
+  .callout-info .callout-title { color: #065f46; }
+  .callout-alt  .callout-title { color: #3730a3; }
+
+  .question-box { background: #f8faff; border: 1px solid #c7d2fe; border-left: 4px solid #4f46e5; border-radius: 8px; padding: 1rem 1.2rem; margin: 1.5rem 0; }
+  .q-title { font-weight: 700; color: #3730a3; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.6rem; }
+  .question-box ol, .question-box ul { padding-left: 1.4rem; }
+  .question-box li { margin-bottom: 0.35rem; }
+
+  .dl-buttons { display: flex; flex-wrap: wrap; gap: 0.6rem; margin: 0.8rem 0; }
+  .dl-btn { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.5rem 1rem; border-radius: 6px; font-size: 0.82rem; font-weight: 600; transition: all 0.15s; text-decoration: none !important; }
+  .dl-btn-primary { background: var(--teal); color: white; }
+  .dl-btn-primary:hover { background: #007d6e; }
+  .dl-btn-secondary { background: white; color: var(--slate); border: 1px solid var(--border); }
+  .dl-btn-secondary:hover { background: var(--light-bg); }
+
+  .method-cards { display: grid; grid-template-columns: repeat(3,1fr); gap: 1rem; margin: 1.5rem 0; }
+  @media(max-width:700px){.method-cards{grid-template-columns:1fr;}}
+  .method-card { border: 1px solid var(--border); border-radius: 8px; padding: 1rem; }
+  .method-card ul { list-style: none; padding: 0; font-size: 0.83rem; }
+  .method-card li { padding: 0.2rem 0; }
+
+  .dir-tree { background: #1e293b; color: #94a3b8; border-radius: 8px; padding: 1.2rem 1.4rem; font-family: monospace; font-size: 0.82rem; line-height: 1.7; overflow-x: auto; margin: 1rem 0; }
+  .dir-hl { color: #7dd3fc; }
+  .dir-comment { color: #475569; }
+
+  .formula-box { background: var(--light-bg); border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.5rem; margin: 1rem 0; text-align: center; font-style: italic; font-size: 1rem; }
+  .objectives { background: var(--teal-light); border-radius: 8px; padding: 1.2rem 1.5rem; margin: 1rem 0; }
+  .objectives ul { padding-left: 1.4rem; }
+  .objectives li { margin-bottom: 0.4rem; font-size: 0.93rem; }
+
+  .two-step { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0; }
+  @media(max-width:600px){.two-step{grid-template-columns:1fr;}}
+  .step-card { border: 1px solid var(--border); border-radius: 8px; padding: 1rem; }
+  .step-letter { display: inline-block; width: 1.8rem; height: 1.8rem; background: var(--navy); color: white; border-radius: 50%; text-align: center; line-height: 1.8rem; font-weight: 700; margin-right: 0.4rem; }
+
+  .references { font-size: 0.85rem; padding-left: 1.4rem; }
+  .references li { margin-bottom: 0.4rem; }
+
+  footer { background: var(--navy); color: rgba(255,255,255,0.5); text-align: center; padding: 1.5rem; font-size: 0.8rem; margin-top: 3rem; }
+  footer a { color: rgba(255,255,255,0.7); }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <div class="nav-brand">SISG 2026 · QG3 <span>Polygenic Risk Scores</span></div>
+    <div class="nav-links">
+      <div style="display:flex;flex-direction:column;justify-content:flex-end">
+        <div class="nav-section">Getting Started</div>
+        <div style="display:flex">
+          <a href="#overview">📋 Overview</a>
+          <a href="#setup">⚙️ Setup &amp; Tools</a>
+          <a href="#data">📦 Data Download</a>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;justify-content:flex-end">
+        <div class="nav-section">Methods</div>
+        <div style="display:flex">
+          <a href="#part1">1 C+PT</a>
+          <a href="#part2">2 SBLUP</a>
+          <a href="#part3">3 SBayes C</a>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;justify-content:flex-end">
+        <div class="nav-section">Results</div>
+        <div style="display:flex">
+          <a href="#comparison">📊 Method Comparison</a>
+          <a href="#discussion">💬 Discussion</a>
+        </div>
+      </div>
+    </div>
+    <div class="nav-ext">
+      <a href="https://github.com/moeenriaz2/SISG26-PRS" target="_blank">🐙 GitHub Repository</a>
+      <a href="https://pgscatalog.org" target="_blank">🔗 PGS Catalog</a>
+      <a href="https://www.cog-genomics.org/plink/1.9/" target="_blank">🔗 PLINK 1.9</a>
+      <a href="https://cnsgenomics.com/software/gctb/" target="_blank">🔗 GCTB</a>
+    </div>
+  </div>
+</nav>
+
+<div class="hero">
+  <div class="hero-badge">PRACTICAL</div>
+  <h1>Polygenic Risk Scores from GWAS Summary Statistics</h1>
+  <div class="hero-meta">SISG 2026 · Module QG3 · Summer Institute in Statistical Genetics</div>
+  <div class="hero-tags">
+    <span class="tag"><strong>Methods:</strong> C+PT · SBLUP · SBayes C</span>
+    <span class="tag"><strong>Tools:</strong> PLINK 1.9 · GCTB · R</span>
+    <span class="tag"><strong>Validation:</strong> 1000 Genomes Project (N = 2,504)</span>
+    <span class="tag"><strong>Repo:</strong> <a href="https://github.com/moeenriaz2/SISG26-PRS" style="color:#7ef0e4">moeenriaz2/SISG26-PRS</a></span>
+  </div>
+</div>
+
+<div class="container">
+
+<!-- OVERVIEW -->
+<section id="overview">
+<h2>Overview</h2>
+<p>This practical walks through three methods for computing polygenic risk scores (PRS) from GWAS summary statistics, evaluating each in a multi-ancestry validation cohort. No individual-level GWAS data is required — only published summary statistics and an LD reference panel.</p>
+<table>
+  <thead><tr><th>Method</th><th>Core Idea</th><th>Tool</th><th>Key Parameter</th></tr></thead>
+  <tbody>
+    <tr><td><strong>C+PT</strong></td><td>Select independent SNPs by LD clumping; tune P-value threshold in validation</td><td>PLINK 1.9 + R</td><td>P-value threshold T</td></tr>
+    <tr><td><strong>SBLUP</strong></td><td>Ridge regression on summary stats; approximates joint SNP effects</td><td>R (manual) or GCTA</td><td>λ = M(1−h²)/(Nh²)</td></tr>
+    <tr><td><strong>SBayes C</strong></td><td>Bayesian two-component prior; estimates sparse joint effects via MCMC</td><td>GCTB</td><td>π (causal fraction)</td></tr>
+  </tbody>
+</table>
+<div class="objectives">
+  <strong>Learning Objectives</strong>
+  <ul>
+    <li>Understand how marginal GWAS effects differ from joint effects due to LD</li>
+    <li>Apply C+PT, SBLUP, and SBayes C to compute genome-wide PRS</li>
+    <li>Evaluate and compare PRS accuracy across five ancestry groups</li>
+    <li>Interpret the role of the LD reference panel and its limitations</li>
+  </ul>
+</div>
+</section>
+
+<!-- SETUP -->
+<section id="setup">
+<h2>Setup &amp; Tools</h2>
+<h3>Required Software</h3>
+<table>
+  <thead><tr><th>Tool</th><th>Version</th><th>Download</th><th>Use</th></tr></thead>
+  <tbody>
+    <tr><td><strong>PLINK 1.9</strong></td><td>≥ 1.9</td><td><a href="https://www.cog-genomics.org/plink/1.9/">cog-genomics.org</a></td><td>Clumping, PGS scoring</td></tr>
+    <tr><td><strong>PLINK 2</strong></td><td>≥ 2.0</td><td><a href="https://www.cog-genomics.org/plink/2.0/">cog-genomics.org</a></td><td>Data QC, VCF conversion</td></tr>
+    <tr><td><strong>GCTB</strong></td><td>≥ 2.05</td><td><a href="https://cnsgenomics.com/software/gctb/#Download">cnsgenomics.com</a></td><td>SBayes C/R methods</td></tr>
+    <tr><td><strong>R</strong></td><td>≥ 4.2</td><td><a href="https://cran.r-project.org/">cran.r-project.org</a></td><td>SBLUP, evaluation, plots</td></tr>
+  </tbody>
+</table>
+<h3>Quick Install (Linux / macOS)</h3>
+<div class="code-block">
+  <div class="code-header bash"><span>bash</span><span class="lang">Terminal</span></div>
+  <pre class="bash"><code>git clone https://github.com/moeenriaz2/SISG26-PRS.git
+cd SISG26-PRS
+bash setup.sh        # downloads PLINK 1.9, PLINK 2, GCTB into exe/
+export PATH="$PWD/exe:$PATH"</code></pre>
+</div>
+<h3>R Packages</h3>
+<div class="code-block">
+  <div class="code-header r"><span>R</span><span class="lang">R Console</span></div>
+  <pre class="r-code"><code>install.packages(c("data.table", "ggplot2", "dplyr", "tidyr"))
+# For LDpred2 (optional companion method):
+install.packages("remotes")
+remotes::install_github("privefl/bigsnpr")</code></pre>
+</div>
+<h3>Working Directory</h3>
+<div class="code-block">
+  <div class="code-header bash"><span>bash</span><span class="lang">Terminal</span></div>
+  <pre class="bash"><code>mkdir -p practical/{C+PT,SBLUP,SBC}
+cd practical</code></pre>
+</div>
+</section>
+
+<!-- ================================================================
+     DATA DOWNLOAD  — updated section
+     ================================================================ -->
+<section id="data">
+<h2>Data Download</h2>
+
+<div class="callout callout-warn">
+  <div class="callout-title">⚠ Data Storage Note</div>
+  Large genotype files (<code>.bed/.bim/.fam</code>) are <strong>not stored in the GitHub repository</strong> due to file size limits. They are downloaded directly from the EBI 1000 Genomes FTP using the script below. All other required files — GWAS summary statistics, phenotypes, and LD matrices — are available from the <a href="https://github.com/moeenriaz2/SISG26-PRS/releases/tag/v1.0" target="_blank">GitHub Release v1.0</a>.
+</div>
+
+<!-- 1 · Genotypes -->
+<h3>1 · Validation Genotypes — 1000 Genomes Project (1KG)</h3>
+<p>We use genotype data for <strong>N = 2,504 samples</strong> from the 1000 Genomes Project Phase 3, filtered to <strong>HapMap3 SNPs on chromosome 20</strong>. Five super-populations are included: EUR (N=503), EAS (N=504), SAS (N=489), AMR (N=347), AFR (N=661).</p>
+<p>Run the included download script from the repo root (<strong>~20 min</strong>, requires ~1 GB disk space). It downloads the chr20 VCF from the EBI FTP, applies HapMap3 filtering, and writes PLINK binary files:</p>
+
+<div class="dl-buttons">
+  <a href="https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/release/20130502/" class="dl-btn dl-btn-secondary" target="_blank">🌍 EBI 1KG FTP (original VCFs)</a>
+</div>
+
+<div class="code-block">
+  <div class="code-header bash"><span>bash</span><span class="lang">Terminal — run from repo root</span></div>
+  <pre class="bash"><code>bash data/download_1kg.sh
+
+# This script will:
+#   1. Download ALL.chr20.phase3.vcf.gz from EBI FTP
+#   2. Convert VCF to PLINK format → 1kg_hm3.bed / .bim / .fam
+#   3. Write ancestry IDs: EUR.id, EAS.id, SAS.id, AMR.id, AFR.id</code></pre>
+</div>
+
+<!-- 2 · GWAS Summary Stats -->
+<h3>2 · GWAS Summary Statistics (Simulated)</h3>
+<p>Summary statistics for two simulated traits were generated using <code>fastGWA</code> on chromosome 20 SNPs (M = 32,260) in N = 348,501 unrelated UK Biobank EUR participants. Both traits have h²<sub>SNP</sub> = 0.2. <strong>Trait 2 is more polygenic than Trait 1.</strong></p>
+
+<div class="dl-buttons">
+  <a href="https://github.com/moeenriaz2/SISG26-PRS/releases/download/v1.0/gwas_summary_stats.tar.gz" class="dl-btn dl-btn-primary" target="_blank">⬇ gwas_summary_stats.tar.gz (~4 MB)</a>
+</div>
+
+<div class="code-block">
+  <div class="code-header bash"><span>bash</span><span class="lang">Terminal</span></div>
+  <pre class="bash"><code>wget https://github.com/moeenriaz2/SISG26-PRS/releases/download/v1.0/gwas_summary_stats.tar.gz
+tar -xvzf gwas_summary_stats.tar.gz
+# Extracts: Trait1.fastGWA  Trait2.fastGWA  Trait1.ma  Trait2.ma</code></pre>
+</div>
+
+<p>The <code>.fastGWA</code> format has columns: <code>CHR SNP POS A1 A2 N AF1 BETA SE P</code><br>
+The <code>.ma</code> format (required for GCTA SBLUP and GCTB SBayesC): <code>SNP A1 A2 freq b se p N</code></p>
+
+<!-- 3 · Phenotypes -->
+<h3>3 · Phenotypes &amp; Ancestry Labels</h3>
+
+<div class="dl-buttons">
+  <a href="https://github.com/moeenriaz2/SISG26-PRS/releases/download/v1.0/phenotypes.tar.gz" class="dl-btn dl-btn-primary" target="_blank">⬇ phenotypes.tar.gz (~0.2 MB)</a>
+</div>
+
+<div class="code-block">
+  <div class="code-header bash"><span>bash</span><span class="lang">Terminal</span></div>
+  <pre class="bash"><code>wget https://github.com/moeenriaz2/SISG26-PRS/releases/download/v1.0/phenotypes.tar.gz
+tar -xvzf phenotypes.tar.gz</code></pre>
+</div>
+
+<table>
+  <thead><tr><th>File</th><th>Description</th><th>Columns</th></tr></thead>
+  <tbody>
+    <tr><td><code>1kg.Trait1.phen</code></td><td>Simulated trait 1 phenotypes (1KG samples)</td><td>FID IID Phenotype</td></tr>
+    <tr><td><code>1kg.Trait2.phen</code></td><td>Simulated trait 2 phenotypes (1KG samples)</td><td>FID IID Phenotype</td></tr>
+    <tr><td><code>1kg-sample-2504-phased.txt</code></td><td>Ancestry labels for all 2504 samples</td><td>sample super_pop pop gender</td></tr>
+    <tr><td><code>EUR.id</code></td><td>FID/IID of 503 EUR samples (for LD clumping)</td><td>FID IID</td></tr>
+  </tbody>
+</table>
+
+<!-- 4 · LD Matrices -->
+<h3>4 · LD Matrices for SBayes C</h3>
+<p>GCTB requires pre-computed LD matrices in its own sparse format. We provide 38 LD block matrices for chromosome 20 (computed in N = 348,501 UKB EUR samples):</p>
+
+<div class="dl-buttons">
+  <a href="https://github.com/moeenriaz2/SISG26-PRS/releases/download/v1.0/ldm_chr20.tar.gz" class="dl-btn dl-btn-primary" target="_blank">⬇ ldm_chr20.tar.gz (~500 MB)</a>
+  <a href="https://cnsgenomics.com/software/gctb/#Download" class="dl-btn dl-btn-secondary" target="_blank">🔗 GCTB Pre-computed LDMs</a>
+</div>
+
+<div class="code-block">
+  <div class="code-header bash"><span>bash</span><span class="lang">Terminal</span></div>
+  <pre class="bash"><code>wget https://github.com/moeenriaz2/SISG26-PRS/releases/download/v1.0/ldm_chr20.tar.gz
+tar -xvzf ldm_chr20.tar.gz
+# Extracts: ldm/mldm.txt  ldm/BLOCK*.CHROM20.*  (38 block matrices)</code></pre>
+</div>
+
+<p>The file <code>ldm/mldm.txt</code> lists the paths to all 38 block matrices — this is passed to GCTB via <code>--mldm</code>.</p>
+
+<!-- Directory layout -->
+<h3>Summary: Expected directory layout</h3>
+<p>After running the download script and extracting the release archives, your <code>practical/</code> directory should look like:</p>
+
+<div class="dir-tree">
+<span class="dir-hl">practical/</span>
+├── <span class="dir-hl">1kg_hm3.bed / .bim / .fam</span>    <span class="dir-comment">← bash data/download_1kg.sh (steps 1–2)</span>
+├── EUR.id / EAS.id / SAS.id / AMR.id / AFR.id  <span class="dir-comment">← bash data/download_1kg.sh (step 3)</span>
+├── <span class="dir-hl">Trait1.fastGWA</span>  Trait2.fastGWA   <span class="dir-comment">← from: gwas_summary_stats.tar.gz</span>
+├── Trait1.ma  Trait2.ma                         <span class="dir-comment">← from: gwas_summary_stats.tar.gz</span>
+├── <span class="dir-hl">1kg.Trait1.phen</span>  1kg.Trait2.phen  <span class="dir-comment">← from: phenotypes.tar.gz</span>
+├── <span class="dir-hl">1kg-sample-2504-phased.txt</span>           <span class="dir-comment">← from: phenotypes.tar.gz</span>
+├── <span class="dir-hl">ldm/</span>                                 <span class="dir-comment">← from: ldm_chr20.tar.gz</span>
+│   ├── mldm.txt
+│   └── BLOCK*.CHROM20.*  (38 matrices)
+├── C+PT/                                <span class="dir-comment">← output folder (auto-created)</span>
+├── SBLUP/
+└── SBC/
+</div>
+</section>
+
+<!-- PART 1: C+PT -->
+<section id="part1">
+<h2><span class="part-badge">1</span> Part 1: Clumping + P-value Thresholding (C+PT)</h2>
+<p>C+PT is the simplest and most widely used PRS method. It selects a set of <em>independent</em> SNPs associated with the trait at a given P-value threshold, then sums their marginal GWAS effects as the PRS weights.</p>
+<div class="formula-box">PRS<sub>i</sub> = Σ<sub>j ∈ S<sub>T</sub></sub> β̂<sub>j</sub> · G<sub>ij</sub><br><small>where S<sub>T</sub> = {j : p<sub>j</sub> &lt; T, SNP j is independent given LD clumping}</small></div>
+<div class="two-step">
+  <div class="step-card">
+    <h4><span class="step-letter">C</span>Clumping (LD pruning)</h4>
+    <p style="font-size:0.88rem">Slide a window of ±500 kb. Within each window, keep the SNP with the smallest p-value; remove any SNP with r² &gt; threshold (e.g., 0.1). Ensures SNPs in S<sub>T</sub> are approximately independent.</p>
+  </div>
+  <div class="step-card">
+    <h4><span class="step-letter">T</span>Thresholding (P-value filter)</h4>
+    <p style="font-size:0.88rem">Try multiple P-value thresholds T ∈ {5×10⁻⁸, …, 0.5}. For each T, compute PRS in a validation sample and select the T that maximises R².</p>
+  </div>
+</div>
+
+<h3>Step 1.1 · Clumping with PLINK</h3>
+<div class="code-block">
+  <div class="code-header bash"><span>bash</span><span class="lang">Terminal</span></div>
+  <pre class="bash"><code>PLINK=./exe/plink
+window_kb=1000   # 1000 kb = 1 Mb window around index SNP
+r2_thresh=0.1    # LD threshold: remove SNPs with r² > 0.1
+trait=Trait1
+pv_thresh=5e-8   # start with genome-wide significance
+
+${PLINK} --bfile 1kg_hm3 \
+  --keep EUR.id \
+  --clump ${trait}.fastGWA \
+  --clump-kb  ${window_kb} \
+  --clump-p1  ${pv_thresh} \
+  --clump-p2  ${pv_thresh} \
+  --clump-r2  ${r2_thresh} \
+  --out C+PT/${trait}_rsq_${r2_thresh}_p_${pv_thresh}
+
+# Output: C+PT/Trait1_rsq_0.1_p_5e-8.clumped
+# Each row = one index SNP retained after clumping</code></pre>
+</div>
+<div class="question-box"><div class="q-title">Question 1</div>
+<p>Open the <code>.clumped</code> file. How many SNPs were selected using p &lt; 5×10⁻⁸ and r² &lt; 0.1 for Trait 1? Does this number change substantially for Trait 2? <em>Hint:</em> check the <code>SP2</code> column.</p></div>
+
+<h3>Step 1.2 · Sweep across P-value thresholds</h3>
+<div class="code-block">
+  <div class="code-header bash"><span>bash</span><span class="lang">Terminal</span></div>
+  <pre class="bash"><code>for pv_thresh in 5e-8 5e-7 5e-6 5e-5 5e-4 5e-3 5e-2 5e-1
+do
+  for trait in Trait1 Trait2
+  do
+    ${PLINK} --bfile 1kg_hm3 \
+      --keep EUR.id \
+      --clump ${trait}.fastGWA \
+      --clump-kb  ${window_kb} \
+      --clump-p1  ${pv_thresh} \
+      --clump-p2  ${pv_thresh} \
+      --clump-r2  ${r2_thresh} \
+      --out C+PT/${trait}_rsq_${r2_thresh}_p_${pv_thresh} --silent
+  done
+done</code></pre>
+</div>
+
+<h3>Step 1.3 · Compute PRS with PLINK <code>--score</code></h3>
+<div class="code-block">
+  <div class="code-header bash"><span>bash</span><span class="lang">Terminal</span></div>
+  <pre class="bash"><code>for pv_thresh in 5e-8 5e-7 5e-6 5e-5 5e-4 5e-3 5e-2 5e-1
+do
+  for trait in Trait1 Trait2
+  do
+    clumped_file="C+PT/${trait}_rsq_${r2_thresh}_p_${pv_thresh}.clumped"
+    [ ! -f "${clumped_file}" ] && continue
+
+    ${PLINK} --bfile 1kg_hm3 \
+      --score ${trait}.fastGWA 2 4 8 sum center \
+      --extract ${clumped_file} \
+      --out C+PT/${trait}_rsq_${r2_thresh}_p_${pv_thresh}.pred --silent
+  done
+done
+# Output: *.pred.profile  →  column SCORESUM = individual PRS</code></pre>
+</div>
+
+<h3>Step 1.4 · Evaluate prediction accuracy in R</h3>
+<div class="code-block">
+  <div class="code-header r"><span>R</span><span class="lang">R</span></div>
+  <pre class="r-code"><code>options(stringsAsFactors = FALSE)
+library(data.table)
+
+r2_thr  <- 0.1
+trait   <- "Trait2"
+threshs <- c("5e-8","5e-7","5e-6","5e-5","5e-4","5e-3","5e-2","5e-1")
+
+pops <- fread("1kg-sample-2504-phased.txt")
+phen <- fread(paste0("1kg.", trait, ".phen"))[, .(IID = V2, PHENO = V3)]
+
+for (pv in threshs) {
+  f <- paste0("C+PT/", trait, "_rsq_", r2_thr, "_p_", pv, ".pred.profile")
+  if (!file.exists(f)) next
+  tmp <- fread(f)[, .(IID = V2, PGS = SCORESUM)]
+  setnames(tmp, "PGS", paste0("P_", pv))
+  phen <- merge(phen, tmp, by = "IID", all.x = TRUE)
+}
+phen <- merge(phen, pops[, .(IID = sample, super_pop)], by = "IID")
+
+ancestries <- c("EUR","SAS","EAS","AMR","AFR")
+pgs_cols   <- grep("^P_", names(phen), value = TRUE)
+
+r2_table <- sapply(ancestries, function(anc) {
+  sub <- phen[super_pop == anc]
+  sapply(pgs_cols, function(col) {
+    if (all(is.na(sub[[col]]))) return(NA)
+    cor(sub$PHENO, sub[[col]], use = "complete.obs")^2
+  })
+})
+rownames(r2_table) <- pgs_cols
+print(round(r2_table, 4))
+
+best <- pgs_cols[which.max(rowMeans(r2_table, na.rm = TRUE))]
+cat("\nBest threshold:", best, "\n")</code></pre>
+</div>
+<div class="question-box"><div class="q-title">Question 2</div>
+<ol>
+  <li><strong>(a)</strong> What is the best R² in EUR individuals across all thresholds? At which threshold?</li>
+  <li><strong>(b)</strong> Does the optimal threshold differ across ancestry groups?</li>
+  <li><strong>(c)</strong> In which ancestry group is prediction accuracy lowest? Why might this be?</li>
+  <li><strong>(d)</strong> How does Trait 1 compare to Trait 2 — is one more portable across ancestries?</li>
+</ol>
+<p><em>Bonus:</em> Split EUR samples into two random halves. Select the best threshold using half-1, then evaluate in half-2. This is cross-validation.</p></div>
+</section>
+
+<!-- PART 2: SBLUP -->
+<section id="part2">
+<h2><span class="part-badge">2</span> Part 2: Summary-data BLUP (SBLUP)</h2>
+<p>SBLUP is a ridge-regression approximation of the individual-level BLUP. It computes <em>joint</em> SNP effects accounting for LD between SNPs rather than using marginal effects directly.</p>
+<div class="formula-box"><strong>β̂<sub>joint</sub> = (R + λI)⁻¹ β̂<sub>marginal</sub></strong><br><small>where <strong>R</strong> = LD correlation matrix, λ = M(1 − h²) / (N · h²)</small></div>
+<table>
+  <thead><tr><th>Symbol</th><th>Meaning</th><th>This Practical</th></tr></thead>
+  <tbody>
+    <tr><td><code>M</code></td><td>Number of SNPs</td><td>32,260 (chr20 HapMap3)</td></tr>
+    <tr><td><code>h²</code></td><td>SNP heritability</td><td>0.2 (both traits)</td></tr>
+    <tr><td><code>N</code></td><td>GWAS sample size</td><td>348,501</td></tr>
+    <tr><td><code>λ</code></td><td>Ridge penalty = M(1−h²)/(Nh²)</td><td>≈ 0.463</td></tr>
+  </tbody>
+</table>
+
+<h3>Step 2.1 · (Reference) Computing the LD matrix with PLINK</h3>
+<div class="callout callout-warn">
+  <div class="callout-title">⚠ For Reference Only — do not run during the session (~30 min)</div>
+</div>
+<div class="code-block">
+  <div class="code-header bash"><span>bash</span><span class="lang">Terminal — for reference only</span></div>
+  <pre class="bash"><code># Computed on N=348,501 UKB EUR individuals — provided pre-computed
+${PLINK} --bfile UKBu_chrom20 --chr 20 \
+  --ld-window 999999999 --ld-window-kb 1000 \
+  --ld-window-r2 0.00 --r 'yes-really' 'gz' \
+  --out plinkLDMat_chrom20
+# Output: plinkLDMat_chrom20.ld.gz  (columns: CHR_A BP_A SNP_A CHR_B BP_B SNP_B R)</code></pre>
+</div>
+<div class="callout callout-alt">
+  <div class="callout-title">⚡ Using 1KG as LD Reference (Practical Alternative)</div>
+  <p>Compute LD from the 1KG EUR samples (N=503) as an approximation — noisier but runs quickly:</p>
+  <div class="code-block" style="margin-top:0.6rem">
+    <div class="code-header bash"><span>bash</span><span class="lang">Terminal</span></div>
+    <pre class="bash"><code>${PLINK} --bfile 1kg_hm3 --keep EUR.id --chr 20 \
+  --ld-window 999999999 --ld-window-kb 1000 \
+  --ld-window-r2 0.00 --r 'yes-really' 'gz' --out plinkLDMat_chrom20</code></pre>
+  </div>
+</div>
+
+<h3>Step 2.2 · Compute SBLUP weights in R</h3>
+<div class="code-block">
+  <div class="code-header bash"><span>bash</span><span class="lang">Terminal</span></div>
+  <pre class="bash"><code>for trait in Trait1 Trait2; do
+  Rscript scripts/sblup.R \
+    --trait ${trait} \
+    --gwas  ${trait}.fastGWA \
+    --ldmat plinkLDMat_chrom20.ld.gz \
+    --h2    0.2 \
+    --N     348501 \
+    --outdir SBLUP/
+done
+# Output: SBLUP/Trait1.sblup.weights  (columns: SNP A1 BETA_SBLUP)</code></pre>
+</div>
+<div class="code-block">
+  <div class="code-header r"><span>R</span><span class="lang">sblup.R — key lines</span></div>
+  <pre class="r-code"><code>M      <- nrow(gwas)
+lambda <- M * (1 - h2) / (N * h2)
+R_mat  <- build_ld_matrix(ld_raw, snp_ids = gwas$SNP)
+A_mat  <- R_mat + lambda * diag(M)
+beta_sblup <- solve(A_mat, gwas$BETA)
+write.table(data.frame(SNP=gwas$SNP, A1=gwas$A1, BETA=beta_sblup),
+            output_file, quote=FALSE, row.names=FALSE)</code></pre>
+</div>
+
+<h3>Step 2.3 · Compute SBLUP PRS with PLINK</h3>
+<div class="code-block">
+  <div class="code-header bash"><span>bash</span><span class="lang">Terminal</span></div>
+  <pre class="bash"><code>for trait in Trait1 Trait2; do
+  ${PLINK} --bfile 1kg_hm3 \
+    --score SBLUP/${trait}.sblup.weights 1 2 3 sum center \
+    --out   SBLUP/${trait}.pred
+done</code></pre>
+</div>
+
+<h3>Step 2.4 · Evaluate SBLUP PRS accuracy in R</h3>
+<div class="code-block">
+  <div class="code-header r"><span>R</span><span class="lang">R</span></div>
+  <pre class="r-code"><code>library(data.table)
+trait  <- "Trait2"
+pops   <- fread("1kg-sample-2504-phased.txt")
+phen   <- fread(paste0("1kg.", trait, ".phen"))[, .(IID=V2, PHENO=V3)]
+sblup  <- fread(paste0("SBLUP/", trait, ".pred.profile"))[, .(IID=V2, SBLUP=SCORESUM)]
+dat    <- phen |> merge(sblup, by="IID") |> merge(pops[, .(IID=sample, super_pop)], by="IID")
+
+ancestries <- c("EUR","SAS","EAS","AMR","AFR")
+r2_sblup <- setNames(sapply(ancestries, function(a) {
+  s <- dat[super_pop==a]; cor(s$PHENO, s$SBLUP)^2
+}), ancestries)
+print(round(r2_sblup, 4))</code></pre>
+</div>
+<div class="question-box"><div class="q-title">Question 3</div>
+<ol>
+  <li><strong>(a)</strong> How does SBLUP compare to the best C+PT result for EUR and AFR?</li>
+  <li><strong>(b)</strong> SBLUP uses <em>all</em> M SNPs. Why might this give better accuracy than C+PT for highly polygenic traits?</li>
+  <li><strong>(c)</strong> What happens to SBLUP accuracy if you use the 1KG EUR LD reference (N=503) instead of the UKB reference (N=348,501)?</li>
+</ol></div>
+
+<h3>Alternative: SBLUP via GCTA (optional)</h3>
+<div class="code-block">
+  <div class="code-header bash"><span>bash</span><span class="lang">Terminal — optional, ~5 min</span></div>
+  <pre class="bash"><code>GCTA=./exe/gcta-1.94.1
+lambda=135628    # M * (1/h2 - 1) = 32260 * 4.0 ≈ 129040
+for trait in Trait1 Trait2; do
+  ${GCTA} --bfile 1kg_hm3 --chr 20 \
+    --cojo-file ${trait}.ma --cojo-sblup ${lambda} \
+    --cojo-wind 1000 --thread-num 4 --out SBLUP/${trait}_gcta
+done</code></pre>
+</div>
+</section>
+
+<!-- PART 3: SBAYES C -->
+<section id="part3">
+<h2><span class="part-badge">3</span> Part 3: SBayes C (GCTB)</h2>
+<p>SBayes C is a Bayesian approximation of the individual-level Bayes C model. Unlike SBLUP's infinitesimal prior, SBayesC assumes only a proportion π of SNPs affect the trait.</p>
+<div class="formula-box">β<sub>j</sub> ~ π · N(0, σ²<sub>b</sub>) + (1−π) · δ<sub>0</sub><br><small>π and σ²<sub>b</sub> are estimated from the data via MCMC.</small></div>
+<table>
+  <thead><tr><th>Flag</th><th>Meaning</th><th>Value Used</th></tr></thead>
+  <tbody>
+    <tr><td><code>--chain-length</code></td><td>Total MCMC iterations</td><td>10,000</td></tr>
+    <tr><td><code>--burn-in</code></td><td>Warm-up iterations discarded</td><td>5,000</td></tr>
+    <tr><td><code>--thin</code></td><td>Keep every nth sample</td><td>10</td></tr>
+    <tr><td><code>--pi</code></td><td>Starting causal fraction</td><td>0.0001</td></tr>
+    <tr><td><code>--hsq</code></td><td>Starting h²</td><td>0.001</td></tr>
+    <tr><td><code>--robust</code></td><td>Robust mode for numerical stability</td><td>—</td></tr>
+  </tbody>
+</table>
+
+<h3>Step 3.1 · Run SBayes C with GCTB</h3>
+<div class="code-block">
+  <div class="code-header bash"><span>bash</span><span class="lang">Terminal</span></div>
+  <pre class="bash"><code>GCTB=./exe/gctb
+mldm=ldm/mldm.txt
+
+for trait in Trait1 Trait2; do
+  ${GCTB} \
+    --sbayes C \
+    --mldm   ${mldm} \
+    --gwas-summary ${trait}.ma \
+    --pi 0.0001 --hsq 0.001 \
+    --chain-length 10000 --burn-in 5000 \
+    --no-mcmc-bin --robust \
+    --out-freq 100 --thin 10 \
+    --out SBC/${trait}
+done
+# Key outputs:
+#   SBC/Trait1.parRes      → posterior h², π, σ²_b
+#   SBC/Trait1.snpRes      → posterior mean effect per SNP
+#   SBC/Trait1.mcmcsamples → MCMC trace</code></pre>
+</div>
+<div class="question-box"><div class="q-title">Question 4</div>
+<p>Open <code>SBC/Trait1.parRes</code>:</p>
+<ol>
+  <li><strong>(a)</strong> What is the posterior h²<sub>SNP</sub>? How close to the true value of 0.2?</li>
+  <li><strong>(b)</strong> What is the estimated proportion of causal SNPs (π)? How many SNPs does this imply on chr20?</li>
+  <li><strong>(c)</strong> Do Vg and Ve sum to ~1?</li>
+</ol></div>
+
+<h3>Step 3.2 · Compute SBayes C PRS with PLINK</h3>
+<div class="code-block">
+  <div class="code-header bash"><span>bash</span><span class="lang">Terminal</span></div>
+  <pre class="bash"><code>for trait in Trait1 Trait2; do
+  ${PLINK} --bfile 1kg_hm3 \
+    --score SBC/${trait}.snpRes 2 5 8 sum center \
+    --out   SBC/${trait}.pred
+done</code></pre>
+</div>
+
+<h3>Step 3.3 · Evaluate accuracy in R</h3>
+<div class="code-block">
+  <div class="code-header r"><span>R</span><span class="lang">R</span></div>
+  <pre class="r-code"><code>library(data.table)
+trait <- "Trait1"
+pops  <- fread("1kg-sample-2504-phased.txt")
+phen  <- fread(paste0("1kg.", trait, ".phen"))[, .(IID=V2, PHENO=V3)]
+sbc   <- fread(paste0("SBC/", trait, ".pred.profile"))[, .(IID=V2, SBC=SCORESUM)]
+dat   <- phen |> merge(sbc, by="IID") |> merge(pops[, .(IID=sample, super_pop)], by="IID")
+
+ancestries <- c("EUR","SAS","EAS","AMR","AFR")
+r2_sbc <- setNames(sapply(ancestries, function(a)
+  cor(dat[super_pop==a, PHENO], dat[super_pop==a, SBC])^2), ancestries)
+print(round(r2_sbc, 4))</code></pre>
+</div>
+<div class="question-box"><div class="q-title">Question 5</div>
+<ol>
+  <li><strong>(a)</strong> How does SBayes C compare to SBLUP and C+PT for EUR prediction?</li>
+  <li><strong>(b)</strong> Compare the three methods in AFR. Which shows the largest relative drop vs EUR?</li>
+  <li><strong>(c)</strong> For Trait 2 (more polygenic), does SBayes C outperform SBLUP more than for Trait 1?</li>
+</ol></div>
+</section>
+
+<!-- METHOD COMPARISON -->
+<section id="comparison">
+<h2>Method Comparison</h2>
+<div class="code-block">
+  <div class="code-header r"><span>R</span><span class="lang">R</span></div>
+  <pre class="r-code"><code>library(data.table); library(ggplot2)
+pops <- fread("1kg-sample-2504-phased.txt")
+ancestries <- c("EUR","SAS","EAS","AMR","AFR")
+results <- list()
+for (trait in c("Trait1","Trait2")) {
+  phen  <- fread(paste0("1kg.", trait, ".phen"))[, .(IID=V2, PHENO=V3)]
+  cpt   <- fread(paste0("C+PT/", trait, "_rsq_0.1_p_5e-4.pred.profile"))[, .(IID=V2, CPT=SCORESUM)]
+  sblup <- fread(paste0("SBLUP/", trait, ".pred.profile"))[, .(IID=V2, SBLUP=SCORESUM)]
+  sbc   <- fread(paste0("SBC/",   trait, ".pred.profile"))[, .(IID=V2, SBC=SCORESUM)]
+  dat   <- phen |> merge(cpt,by="IID") |> merge(sblup,by="IID") |>
+                   merge(sbc,by="IID") |> merge(pops[,.(IID=sample,super_pop)],by="IID")
+  for (anc in ancestries) {
+    s <- dat[super_pop==anc]
+    results[[length(results)+1]] <- data.table(
+      Trait=trait, Ancestry=anc,
+      CPT=cor(s$PHENO,s$CPT)^2, SBLUP=cor(s$PHENO,s$SBLUP)^2, SBC=cor(s$PHENO,s$SBC)^2)
+  }
+}
+tab <- rbindlist(results); print(tab)
+
+tab_long <- melt(tab, id.vars=c("Trait","Ancestry"), variable.name="Method", value.name="R2")
+ggplot(tab_long, aes(x=Ancestry, y=R2, fill=Method)) +
+  geom_bar(stat="identity", position="dodge") +
+  facet_wrap(~Trait) +
+  scale_fill_manual(values=c(CPT="#1D4E89", SBLUP="#0A6640", SBC="#6D28D9")) +
+  labs(title="PRS Prediction Accuracy by Method and Ancestry",
+       y="R² (prediction accuracy)", x="Super-population") +
+  theme_minimal(base_size=13) + theme(legend.position="top")</code></pre>
+</div>
+
+<div class="method-cards">
+  <div class="method-card">
+    <h4>C+PT</h4>
+    <ul>
+      <li>✅ Simple, no model assumptions</li>
+      <li>✅ Fast, works with any GWAS format</li>
+      <li>✅ Interpretable</li>
+      <li>⚠️ Requires validation sample</li>
+      <li>❌ Discards LD-correlated SNPs</li>
+      <li>❌ Noisy in polygenic traits</li>
+    </ul>
+  </div>
+  <div class="method-card">
+    <h4>SBLUP</h4>
+    <ul>
+      <li>✅ Uses all SNPs jointly</li>
+      <li>✅ No validation sample needed</li>
+      <li>✅ Fast closed-form solution</li>
+      <li>⚠️ Requires large, matched LD reference</li>
+      <li>❌ Infinitesimal prior — suboptimal for sparse traits</li>
+      <li>❌ Needs known h²</li>
+    </ul>
+  </div>
+  <div class="method-card">
+    <h4>SBayes C</h4>
+    <ul>
+      <li>✅ Most flexible prior (estimates π)</li>
+      <li>✅ Better for sparse-to-moderate architectures</li>
+      <li>✅ Estimates h², π, Vg as a byproduct</li>
+      <li>⚠️ Requires GCTB LD block matrices</li>
+      <li>❌ Slower (MCMC)</li>
+      <li>❌ Convergence can fail with bad LD reference</li>
+    </ul>
+  </div>
+</div>
+</section>
+
+<!-- DISCUSSION -->
+<section id="discussion">
+<h2>Discussion Questions</h2>
+<div class="question-box"><div class="q-title">Discussion 1</div>
+<p>All three methods perform worse in non-European ancestries. If <strong>R</strong> is estimated from EUR individuals but applied to AFR individuals in the SBLUP formula <strong>b = (R + λI)⁻¹ β̂</strong>, how would the resulting PRS weights be affected?</p></div>
+
+<div class="question-box"><div class="q-title">Discussion 2</div>
+<p>For a highly polygenic trait like height (h² ≈ 0.8, thousands of causal SNPs), which method would you expect to perform best — C+PT, SBLUP, or SBayesC? What about for a trait with 10–20 large-effect loci (e.g., eye colour)?</p></div>
+
+<div class="question-box"><div class="q-title">Discussion 3</div>
+<p>The GWAS used here had N = 348,501 EUR participants. How would prediction accuracy change if the GWAS sample were 10× larger? Which method would benefit most?</p></div>
+
+<h3>Further Reading</h3>
+<ul class="references">
+  <li>Choi et al. (2020) Tutorial: a guide to performing polygenic risk score analyses. <em>Nat Protoc</em> — <a href="https://doi.org/10.1038/s41596-020-0353-1">doi:10.1038/s41596-020-0353-1</a></li>
+  <li>Lloyd-Jones et al. (2019) Improved polygenic prediction by Bayesian multiple regression on summary statistics. <em>Nat Commun</em> — <a href="https://doi.org/10.1038/s41467-019-12653-0">doi:10.1038/s41467-019-12653-0</a></li>
+  <li>Privé et al. (2022) LDpred2-auto. <em>Bioinformatics</em> — <a href="https://doi.org/10.1093/bioinformatics/btac275">doi:10.1093/bioinformatics/btac275</a></li>
+  <li>Martin et al. (2019) Clinical use of polygenic scores. <em>Nat Genet</em> — <a href="https://doi.org/10.1038/s41588-018-0312-3">doi:10.1038/s41588-018-0312-3</a></li>
+  <li>PGS Catalog — <a href="https://pgscatalog.org">pgscatalog.org</a></li>
+  <li>GCTB manual — <a href="https://cnsgenomics.com/software/gctb/">cnsgenomics.com/software/gctb/</a></li>
+</ul>
+</section>
+
+</div>
+
+<footer>
+  Based on the SISG 2025 QG3 Practical by Joelle Mbatchou et al. · Adapted for SISG 2026 by Moeen Riaz ·
+  <a href="https://github.com/moeenriaz2/SISG26-PRS">GitHub: moeenriaz2/SISG26-PRS</a>
+</footer>
+
+</body>
+</html>

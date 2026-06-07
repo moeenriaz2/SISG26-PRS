@@ -2,7 +2,7 @@
 # =============================================================================
 # download_1kg.sh
 # Download and process 1000 Genomes Project Phase 3 chr20 data
-# filtered to HapMap3 SNPs for the SISG 2026 PRS Practical
+# for the SISG 2026 PRS Practical
 #
 # Usage (from repo root):
 #   bash data/download_1kg.sh              # output → practical/
@@ -58,49 +58,18 @@ VCF_URL="${EBI_BASE}/ALL.chr20.phase3_shapeit2_mvncall_integrated_v5b.20130502.g
 TBI_URL="${VCF_URL}.tbi"
 PANEL_URL="${EBI_BASE}/integrated_call_samples_v3.20200731.ALL.ped"
 
-# HapMap3 SNP list — from Broad Institute Alkes group (canonical source)
-# Zenodo mirror used as fallback: https://zenodo.org/records/7773502
-HM3_PRIMARY="https://data.broadinstitute.org/alkesgroup/LDSCORE/w_hm3.snplist.bz2"
-HM3_FALLBACK="https://zenodo.org/records/7773502/files/w_hm3.snplist.gz"
-
 # ── Step 1: Download VCF ─────────────────────────────────────────────────────
-echo "[1/5] Downloading chr20 VCF from EBI 1000 Genomes FTP..."
+echo "[1/3] Downloading chr20 VCF from EBI 1000 Genomes FTP..."
 echo "      (large file ~800 MB — takes 10-15 min)"
 download "${VCF_URL}" "ALL.chr20.vcf.gz"
 download "${TBI_URL}" "ALL.chr20.vcf.gz.tbi"
 echo "      Done."
 echo ""
 
-# ── Step 2: Download HapMap3 SNP list ────────────────────────────────────────
-echo "[2/5] Downloading HapMap3 SNP list..."
-# Try primary URL first, fall back to Zenodo mirror
-if command -v curl &>/dev/null; then
-  HTTP_STATUS=$(curl -o /dev/null -s -w "%{http_code}" --head "${HM3_PRIMARY}")
-else
-  HTTP_STATUS=$(wget -q --spider --server-response "${HM3_PRIMARY}" 2>&1 | grep "HTTP/" | tail -1 | awk '{print $2}')
-fi
-
-if [ "${HTTP_STATUS}" = "200" ]; then
-  download "${HM3_PRIMARY}" "w_hm3.snplist.bz2"
-  bzip2 -d w_hm3.snplist.bz2
-  # Extract SNP IDs only (skip header line)
-  awk 'NR>1 {print $1}' w_hm3.snplist > hm3_snps.txt
-  rm -f w_hm3.snplist
-else
-  echo "  Primary URL unavailable (HTTP ${HTTP_STATUS}), using Zenodo mirror..."
-  download "${HM3_FALLBACK}" "w_hm3.snplist.gz"
-  gunzip -c w_hm3.snplist.gz | awk 'NR>1 {print $1}' > hm3_snps.txt
-  rm -f w_hm3.snplist.gz
-fi
-
-echo "      $(wc -l < hm3_snps.txt | tr -d ' ') HapMap3 SNPs loaded."
-echo ""
-
-# ── Step 3: Convert VCF → PLINK, filter to HapMap3 ───────────────────────────
-echo "[3/5] Converting VCF to PLINK format and filtering to HapMap3 SNPs..."
+# ── Step 2: Convert VCF → PLINK ──────────────────────────────────────────────
+echo "[2/3] Converting VCF to PLINK format..."
 plink2 \
   --vcf ALL.chr20.vcf.gz \
-  --extract hm3_snps.txt \
   --chr 20 \
   --max-alleles 2 \
   --make-bed \
@@ -113,8 +82,8 @@ SAMPLE_COUNT=$(wc -l < 1kg_hm3.fam | tr -d ' ')
 echo "      Variants: ${SNP_COUNT}   Samples: ${SAMPLE_COUNT}"
 echo ""
 
-# ── Step 4: Write ancestry ID files ──────────────────────────────────────────
-echo "[4/5] Downloading sample panel and writing ancestry ID files..."
+# ── Step 3: Download sample panel and write ancestry ID files ─────────────────
+echo "[3/3] Downloading sample panel and writing ancestry ID files..."
 download "${PANEL_URL}" "integrated_call_samples.ped"
 
 for pop in EUR EAS SAS AMR AFR; do
@@ -124,10 +93,10 @@ for pop in EUR EAS SAS AMR AFR; do
 done
 echo ""
 
-# ── Step 5: Clean up intermediates ───────────────────────────────────────────
-echo "[5/5] Cleaning up intermediate files..."
-rm -f ALL.chr20.vcf.gz ALL.chr20.vcf.gz.tbi hm3_snps.txt integrated_call_samples.ped
-echo "      Done."
+# ── Clean up intermediates ────────────────────────────────────────────────────
+echo "Cleaning up intermediate files..."
+rm -f ALL.chr20.vcf.gz ALL.chr20.vcf.gz.tbi integrated_call_samples.ped
+echo "Done."
 echo ""
 
 # ── Summary ───────────────────────────────────────────────────────────────────
@@ -142,12 +111,12 @@ echo "  Ancestry ID files:  EUR.id  EAS.id  SAS.id  AMR.id  AFR.id"
 echo ""
 echo "  Next — download remaining files from GitHub Release v1.0:"
 echo ""
-echo "    wget https://github.com/moeenriaz2/SISG26-PRS/releases/download/v1.0/gwas_summary_stats.tar.gz"
-echo "    wget https://github.com/moeenriaz2/SISG26-PRS/releases/download/v1.0/phenotypes.tar.gz"
-echo "    wget https://github.com/moeenriaz2/SISG26-PRS/releases/download/v1.0/ldm_chr20.tar.gz"
-echo "    tar -xzf gwas_summary_stats.tar.gz"
-echo "    tar -xzf phenotypes.tar.gz"
-echo "    tar -xzf ldm_chr20.tar.gz"
+echo "    curl -O https://github.com/moeenriaz2/SISG26-PRS/releases/download/v1.0/gwas_summary_stats.tar.gz"
+echo "    curl -O https://github.com/moeenriaz2/SISG26-PRS/releases/download/v1.0/phenotypes.tar.gz"
+echo "    curl -O https://github.com/moeenriaz2/SISG26-PRS/releases/download/v1.0/ldm_chr20.tar.gz"
+echo "    tar -xvzf gwas_summary_stats.tar.gz"
+echo "    tar -xvzf phenotypes.tar.gz"
+echo "    tar -xvzf ldm_chr20.tar.gz"
 echo ""
 echo "  Then open practical.html and follow along."
 echo "============================================================"
