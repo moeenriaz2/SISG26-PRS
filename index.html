@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SISG 2026 QG3 · Polygenic Risk Scores</title>
+<style>
+  :root {
+    --navy:      #1a2744;
+    --navy-mid:  #2d3f6e;
+    --teal:      #00a896;
+    --teal-light:#e0f5f2;
+    --slate:     #4a5568;
+    --light-bg:  #f4f7fa;
+    --white:     #ffffff;
+    --border:    #e2e8f0;
+    --text:      #1a202c;
+    --bash-bg:   #0f172a;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, -apple-system, sans-serif; color: var(--text); background: var(--white); line-height: 1.65; }
+  a { color: var(--teal); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* ── NAV ───────────────────────────────────────────────────── */
+  nav { background: var(--navy); color: white; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
+  .nav-inner { max-width: 1100px; margin: 0 auto; display: flex; align-items: center; padding: 0 1rem; height: 48px; gap: 1rem; }
+  .nav-brand { font-weight: 700; font-size: 0.9rem; color: #a0c4ff; white-space: nowrap; }
+  .nav-brand span { color: white; }
+  .nav-links { display: flex; gap: 0; flex: 1; }
+  .nav-links a { color: rgba(255,255,255,0.75); font-size: 0.8rem; padding: 0 0.75rem; height: 48px; display: flex; align-items: center; border-left: 1px solid rgba(255,255,255,0.07); transition: background 0.15s; }
+  .nav-links a:hover { background: rgba(255,255,255,0.09); color: white; text-decoration: none; }
+  .nav-links a.active { color: white; border-bottom: 2px solid var(--teal); }
+  .nav-ext { margin-left: auto; display: flex; gap: 0.4rem; }
+  .nav-ext a { color: rgba(255,255,255,0.55); font-size: 0.72rem; padding: 0.2rem 0.55rem; border: 1px solid rgba(255,255,255,0.15); border-radius: 4px; }
+  .nav-ext a:hover { color: white; background: rgba(255,255,255,0.1); text-decoration: none; }
+
+  /* ── HERO ──────────────────────────────────────────────────── */
+  .hero { background: linear-gradient(135deg, var(--navy) 0%, var(--navy-mid) 100%); color: white; padding: 4rem 1.5rem 3.5rem; text-align: center; }
+  .hero-eyebrow { display: inline-block; background: rgba(0,168,150,0.2); border: 1px solid rgba(0,168,150,0.45); color: #7ef0e4; font-size: 0.72rem; font-family: monospace; letter-spacing: 0.07em; padding: 0.25rem 0.9rem; border-radius: 20px; margin-bottom: 1.2rem; }
+  .hero h1 { font-size: 2.4rem; font-weight: 800; line-height: 1.2; margin-bottom: 0.9rem; }
+  .hero h1 em { font-style: normal; color: #7ef0e4; }
+  .hero-sub { font-size: 1rem; color: rgba(255,255,255,0.65); margin-bottom: 1.8rem; max-width: 580px; margin-left: auto; margin-right: auto; }
+  .hero-actions { display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; }
+  .btn { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.65rem 1.4rem; border-radius: 6px; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: all 0.15s; text-decoration: none !important; }
+  .btn-primary { background: var(--teal); color: white; }
+  .btn-primary:hover { background: #007d6e; }
+  .btn-outline { background: transparent; color: white; border: 1.5px solid rgba(255,255,255,0.4); }
+  .btn-outline:hover { background: rgba(255,255,255,0.08); border-color: white; }
+
+  /* ── LAYOUT ────────────────────────────────────────────────── */
+  .container { max-width: 1000px; margin: 0 auto; padding: 2.5rem 1.5rem; }
+  .section-title { font-size: 1.35rem; font-weight: 700; color: var(--navy); margin-bottom: 1.2rem; padding-bottom: 0.5rem; border-bottom: 2px solid var(--teal); }
+  .section-title small { font-size: 0.8rem; font-weight: 400; color: var(--slate); margin-left: 0.5rem; }
+  p { margin-bottom: 0.8rem; }
+
+  /* ── METHOD CARDS ──────────────────────────────────────────── */
+  .method-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.1rem; margin: 1.5rem 0 2.5rem; }
+  @media(max-width:720px){ .method-grid { grid-template-columns: 1fr; } }
+  .method-card { border: 1px solid var(--border); border-radius: 10px; padding: 1.3rem; background: white; transition: box-shadow 0.15s; }
+  .method-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.09); }
+  .method-num { display: inline-flex; align-items: center; justify-content: center; width: 1.8rem; height: 1.8rem; background: var(--navy); color: white; border-radius: 50%; font-weight: 700; font-size: 0.8rem; margin-bottom: 0.7rem; }
+  .method-card h3 { font-size: 1rem; color: var(--navy); margin-bottom: 0.4rem; }
+  .method-card p { font-size: 0.85rem; color: var(--slate); margin-bottom: 0.6rem; }
+  .method-tag { display: inline-block; background: var(--teal-light); color: #065f46; font-size: 0.72rem; padding: 0.15rem 0.5rem; border-radius: 4px; font-family: monospace; }
+
+  /* ── DATA SECTION ──────────────────────────────────────────── */
+  .data-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0 2rem; }
+  @media(max-width:640px){ .data-grid { grid-template-columns: 1fr; } }
+  .data-card { border: 1px solid var(--border); border-radius: 8px; padding: 1.1rem 1.2rem; background: white; }
+  .data-card-header { display: flex; align-items: flex-start; gap: 0.6rem; margin-bottom: 0.6rem; }
+  .data-icon { font-size: 1.3rem; flex-shrink: 0; margin-top: 0.1rem; }
+  .data-card h4 { font-size: 0.92rem; color: var(--navy); font-weight: 700; margin-bottom: 0.1rem; }
+  .data-card .data-meta { font-size: 0.77rem; color: var(--slate); }
+  .data-card p { font-size: 0.83rem; color: var(--slate); margin-bottom: 0.7rem; }
+  .dl-btn { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.38rem 0.85rem; border-radius: 5px; font-size: 0.78rem; font-weight: 600; text-decoration: none !important; transition: all 0.15s; }
+  .dl-btn-green { background: var(--teal); color: white; }
+  .dl-btn-green:hover { background: #007d6e; }
+  .dl-btn-ghost { background: white; color: var(--slate); border: 1px solid var(--border); }
+  .dl-btn-ghost:hover { background: var(--light-bg); }
+  .dl-btns { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+
+  /* ── CALLOUT ───────────────────────────────────────────────── */
+  .callout { border-radius: 8px; padding: 0.9rem 1.1rem; margin: 1rem 0; border-left: 4px solid; font-size: 0.88rem; }
+  .callout-warn { background: #fffbeb; border-color: #f59e0b; }
+  .callout-info { background: var(--teal-light); border-color: var(--teal); }
+  .callout strong { font-weight: 700; }
+
+  /* ── CODE ──────────────────────────────────────────────────── */
+  .code-wrap { border-radius: 8px; overflow: hidden; margin: 0.8rem 0; }
+  .code-header { background: #0f172a; color: #475569; font-size: 0.7rem; font-family: monospace; padding: 0.35rem 0.9rem; display: flex; justify-content: space-between; }
+  pre { background: var(--bash-bg); color: #e2e8f0; padding: 0.9rem 1rem; font-size: 0.8rem; line-height: 1.6; overflow-x: auto; margin: 0; font-family: 'Courier New', monospace; }
+  code { font-family: 'Courier New', monospace; }
+  p code, li code { background: #f1f5f9; color: #e11d48; padding: 0.1em 0.35em; border-radius: 3px; font-size: 0.85em; }
+
+  /* ── TOOLS TABLE ───────────────────────────────────────────── */
+  table { width: 100%; border-collapse: collapse; font-size: 0.87rem; margin: 1rem 0 1.5rem; }
+  th { background: var(--navy); color: white; padding: 0.55rem 0.85rem; text-align: left; font-weight: 600; }
+  td { padding: 0.5rem 0.85rem; border-bottom: 1px solid var(--border); }
+  tr:nth-child(even) td { background: var(--light-bg); }
+  tr:last-child td { border-bottom: none; }
+
+  /* ── QUICK START STEPS ─────────────────────────────────────── */
+  .steps { counter-reset: step; list-style: none; padding: 0; margin: 1rem 0; }
+  .steps li { counter-increment: step; display: flex; gap: 1rem; margin-bottom: 1.2rem; align-items: flex-start; }
+  .steps li::before { content: counter(step); display: flex; align-items: center; justify-content: center; min-width: 2rem; height: 2rem; background: var(--teal); color: white; border-radius: 50%; font-weight: 700; font-size: 0.85rem; flex-shrink: 0; margin-top: 0.1rem; }
+  .steps li > div { flex: 1; }
+  .step-title { font-weight: 700; color: var(--navy); font-size: 0.95rem; margin-bottom: 0.3rem; }
+
+  /* ── DIR TREE ──────────────────────────────────────────────── */
+  .dir-tree { background: #1e293b; color: #94a3b8; border-radius: 8px; padding: 1.1rem 1.3rem; font-family: monospace; font-size: 0.8rem; line-height: 1.75; overflow-x: auto; margin: 0.8rem 0; }
+  .dhl { color: #7dd3fc; }
+  .dcmt { color: #475569; }
+
+  /* ── OBJECTIVES / LEARNING ─────────────────────────────────── */
+  .obj-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin: 1rem 0 2rem; }
+  @media(max-width:580px){ .obj-grid { grid-template-columns: 1fr; } }
+  .obj-item { display: flex; gap: 0.6rem; align-items: flex-start; background: var(--light-bg); border-radius: 6px; padding: 0.75rem 0.9rem; font-size: 0.87rem; }
+  .obj-icon { font-size: 1rem; flex-shrink: 0; margin-top: 0.05rem; }
+
+  /* ── SCHEDULE ──────────────────────────────────────────────── */
+  .schedule { display: flex; flex-direction: column; gap: 0.5rem; margin: 1rem 0 2rem; }
+  .sched-row { display: flex; gap: 1rem; align-items: flex-start; padding: 0.7rem 0.9rem; border-radius: 6px; border: 1px solid var(--border); }
+  .sched-time { min-width: 5rem; font-size: 0.78rem; font-family: monospace; color: var(--slate); padding-top: 0.1rem; }
+  .sched-label { font-weight: 600; font-size: 0.88rem; color: var(--navy); }
+  .sched-desc { font-size: 0.82rem; color: var(--slate); }
+  .sched-row.highlight { background: var(--teal-light); border-color: var(--teal); }
+
+  /* ── FOOTER ────────────────────────────────────────────────── */
+  footer { background: var(--navy); color: rgba(255,255,255,0.45); text-align: center; padding: 1.5rem; font-size: 0.78rem; margin-top: 3rem; }
+  footer a { color: rgba(255,255,255,0.65); }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-inner">
+    <div class="nav-brand">SISG 2026 · <span>Module QG3</span></div>
+    <div class="nav-links">
+      <a href="#overview" class="active">Overview</a>
+      <a href="#quickstart">Quick Start</a>
+      <a href="#data">Data</a>
+      <a href="#methods">Methods</a>
+      <a href="#schedule">Schedule</a>
+      <a href="practical.html">📋 Practical →</a>
+    </div>
+    <div class="nav-ext">
+      <a href="https://github.com/moeenriaz2/SISG26-PRS" target="_blank">🐙 GitHub</a>
+      <a href="https://pgscatalog.org" target="_blank">PGS Catalog</a>
+    </div>
+  </div>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-eyebrow">SISG 2026 · MODULE QG3 · SUMMER INSTITUTE IN STATISTICAL GENETICS</div>
+  <h1>Polygenic Risk Scores<br>from <em>GWAS Summary Statistics</em></h1>
+  <p class="hero-sub">A hands-on practical covering three PRS methods evaluated in a multi-ancestry validation cohort of 2,504 individuals from the 1000 Genomes Project.</p>
+  <div class="hero-actions">
+    <a href="practical.html" class="btn btn-primary">📋 Open the Practical</a>
+    <a href="https://github.com/moeenriaz2/SISG26-PRS" class="btn btn-outline" target="_blank">🐙 View on GitHub</a>
+    <a href="https://github.com/moeenriaz2/SISG26-PRS/releases/tag/v1.0" class="btn btn-outline" target="_blank">⬇ Download Data (v1.0)</a>
+  </div>
+</div>
+
+<div class="container">
+
+<!-- OVERVIEW -->
+<section id="overview">
+  <div class="section-title">Overview</div>
+  <p>This practical walks through three established methods for computing polygenic risk scores (PRS) from GWAS summary statistics, without requiring any individual-level GWAS data. Each method is evaluated in a multi-ancestry validation cohort (1000 Genomes Project, N = 2,504) across five super-populations.</p>
+
+  <div class="method-grid">
+    <div class="method-card">
+      <div class="method-num">1</div>
+      <h3>C+PT — Clumping + P-value Thresholding</h3>
+      <p>Select independent GWAS SNPs by LD clumping, then tune the P-value inclusion threshold using a validation sample to maximise predictive accuracy.</p>
+      <span class="method-tag">PLINK 1.9 + R</span>
+    </div>
+    <div class="method-card">
+      <div class="method-num">2</div>
+      <h3>SBLUP — Summary-data BLUP</h3>
+      <p>Ridge regression on GWAS summary statistics using an LD correlation matrix to compute joint SNP effects across all M variants simultaneously.</p>
+      <span class="method-tag">R + optional GCTA</span>
+    </div>
+    <div class="method-card">
+      <div class="method-num">3</div>
+      <h3>SBayes C — Bayesian Sparse Regression</h3>
+      <p>A two-component spike-and-slab prior estimated via MCMC. More flexible than SBLUP — estimates the proportion of causal SNPs (π) from the data.</p>
+      <span class="method-tag">GCTB</span>
+    </div>
+  </div>
+
+  <div class="section-title">Learning Objectives</div>
+  <div class="obj-grid">
+    <div class="obj-item"><div class="obj-icon">🧬</div><div>Understand how marginal GWAS effects differ from joint effects due to LD</div></div>
+    <div class="obj-item"><div class="obj-icon">🔧</div><div>Apply C+PT, SBLUP, and SBayes C using PLINK, R, and GCTB</div></div>
+    <div class="obj-item"><div class="obj-icon">📊</div><div>Evaluate and compare PRS accuracy across five ancestry groups</div></div>
+    <div class="obj-item"><div class="obj-icon">🌍</div><div>Interpret the role of the LD reference panel and its ancestry limitations</div></div>
+  </div>
+</section>
+
+<!-- QUICK START -->
+<section id="quickstart">
+  <div class="section-title">Quick Start</div>
+  <ol class="steps">
+    <li>
+      <div>
+        <div class="step-title">Clone the repository and install tools</div>
+        <div class="code-wrap">
+          <div class="code-header"><span>bash</span><span>Terminal</span></div>
+          <pre>git clone https://github.com/moeenriaz2/SISG26-PRS.git
+cd SISG26-PRS
+bash setup.sh              # installs PLINK 1.9, PLINK 2, GCTB → exe/
+export PATH="$PWD/exe:$PATH"</pre>
+        </div>
+      </div>
+    </li>
+    <li>
+      <div>
+        <div class="step-title">Create working directory</div>
+        <div class="code-wrap">
+          <div class="code-header"><span>bash</span><span>Terminal</span></div>
+          <pre>mkdir -p practical/{C+PT,SBLUP,SBC}
+cd practical</pre>
+        </div>
+      </div>
+    </li>
+    <li>
+      <div>
+        <div class="step-title">Download 1000 Genomes genotype data (~20 min)</div>
+        <div class="code-wrap">
+          <div class="code-header"><span>bash</span><span>Terminal — run from repo root</span></div>
+          <pre>bash data/download_1kg.sh
+# Downloads chr20 VCF from EBI FTP, converts to PLINK format (--double-id, --set-all-var-ids)
+# Creates: 1kg_hm3.bed/.bim/.fam  +  EUR/EAS/SAS/AMR/AFR.id</pre>
+        </div>
+      </div>
+    </li>
+    <li>
+      <div>
+        <div class="step-title">Download GWAS summary stats, phenotypes, and LD matrices</div>
+        <div class="code-wrap">
+          <div class="code-header"><span>bash</span><span>Terminal</span></div>
+          <pre>cd practical
+wget https://github.com/moeenriaz2/SISG26-PRS/releases/download/v1.0/gwas_summary_stats.tar.gz
+wget https://github.com/moeenriaz2/SISG26-PRS/releases/download/v1.0/phenotypes.tar.gz
+wget https://github.com/moeenriaz2/SISG26-PRS/releases/download/v1.0/ldm_chr20.tar.gz
+tar -xvzf gwas_summary_stats.tar.gz
+tar -xvzf phenotypes.tar.gz
+tar -xvzf ldm_chr20.tar.gz</pre>
+        </div>
+      </div>
+    </li>
+    <li>
+      <div>
+        <div class="step-title">Install R packages</div>
+        <div class="code-wrap">
+          <div class="code-header"><span>R</span><span>R Console</span></div>
+          <pre>install.packages(c("data.table", "ggplot2", "dplyr", "tidyr"))</pre>
+        </div>
+      </div>
+    </li>
+    <li>
+      <div>
+        <div class="step-title">Open the practical and follow along</div>
+        <p style="font-size:0.87rem; margin-top:0.4rem">→ <a href="practical.html" style="font-weight:600">practical.html</a> — step-by-step instructions for all three methods with code, questions, and discussion.</p>
+      </div>
+    </li>
+  </ol>
+
+  <div class="section-title">Expected Directory Layout <small>after all downloads</small></div>
+  <div class="dir-tree">
+<span class="dhl">practical/</span>
+├── <span class="dhl">1kg_hm3.bed / .bim / .fam</span>      <span class="dcmt">← bash data/download_1kg.sh (steps 1–2)</span>
+├── EUR.id / EAS.id / SAS.id / AMR.id / AFR.id   <span class="dcmt">← bash data/download_1kg.sh (step 3)</span>
+├── <span class="dhl">Trait1.fastGWA</span>  Trait2.fastGWA  <span class="dcmt">← gwas_summary_stats.tar.gz</span>
+├── Trait1.ma  Trait2.ma                          <span class="dcmt">← gwas_summary_stats.tar.gz</span>
+├── <span class="dhl">1kg.Trait1.phen</span>  1kg.Trait2.phen <span class="dcmt">← phenotypes.tar.gz</span>
+├── <span class="dhl">1kg-sample-2504-phased.txt</span>            <span class="dcmt">← phenotypes.tar.gz</span>
+├── <span class="dhl">ldm/</span>                                  <span class="dcmt">← ldm_chr20.tar.gz</span>
+│   ├── mldm.txt  (paths to 38 LD blocks)
+│   └── BLOCK*.CHROM20.*
+├── C+PT/  SBLUP/  SBC/                           <span class="dcmt">← output folders</span>
+  </div>
+</section>
+
+<!-- DATA -->
+<section id="data">
+  <div class="section-title">Data</div>
+
+  <div class="callout callout-warn">
+    <strong>⚠ Large files are not in the repository.</strong> Genotype files are downloaded from the EBI 1000 Genomes FTP via <code>bash data/download_1kg.sh</code>. All other files are available from <a href="https://github.com/moeenriaz2/SISG26-PRS/releases/tag/v1.0" target="_blank">GitHub Release v1.0</a>.
+  </div>
+
+  <div class="data-grid">
+
+    <div class="data-card">
+      <div class="data-card-header">
+        <div class="data-icon">🧬</div>
+        <div>
+          <h4>Validation Genotypes — 1000 Genomes</h4>
+          <div class="data-meta">N = 2,504 · Chr20 · HapMap3 SNPs · ~130 MB</div>
+        </div>
+      </div>
+      <p>Phase 3 data across 5 super-populations: EUR (503), EAS (504), SAS (489), AMR (347), AFR (661). Filtered to HapMap3 SNPs on chromosome 20 (M ≈ 32,260).</p>
+      <div class="dl-btns">
+        <a href="https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/release/20130502/" class="dl-btn dl-btn-ghost" target="_blank">🌍 EBI 1KG FTP</a>
+      </div>
+      <div class="code-wrap" style="margin-top:0.7rem">
+        <div class="code-header"><span>bash</span><span>~20 min</span></div>
+        <pre>bash data/download_1kg.sh
+# Downloads chr20 VCF from EBI FTP, converts to PLINK format (--double-id, --set-all-var-ids)
+# Creates: 1kg_hm3.bed/.bim/.fam  +  EUR/EAS/SAS/AMR/AFR.id</pre>
+      </div>
+    </div>
+
+    <div class="data-card">
+      <div class="data-card-header">
+        <div class="data-icon">📈</div>
+        <div>
+          <h4>GWAS Summary Statistics (Simulated)</h4>
+          <div class="data-meta">2 traits · M = 32,260 · N = 348,501 · h² = 0.2 · ~4 MB</div>
+        </div>
+      </div>
+      <p>Two simulated quantitative traits generated with <code>fastGWA</code> on UK Biobank EUR participants. Trait 2 is more polygenic than Trait 1. Provided in both <code>.fastGWA</code> and <code>.ma</code> formats.</p>
+      <div class="dl-btns">
+        <a href="https://github.com/moeenriaz2/SISG26-PRS/releases/download/v1.0/gwas_summary_stats.tar.gz" class="dl-btn dl-btn-green" target="_blank">⬇ gwas_summary_stats.tar.gz</a>
+      </div>
+    </div>
+
+    <div class="data-card">
+      <div class="data-card-header">
+        <div class="data-icon">📋</div>
+        <div>
+          <h4>Phenotypes &amp; Ancestry Labels</h4>
+          <div class="data-meta">N = 2,504 · 2 traits · 5 populations · ~0.2 MB</div>
+        </div>
+      </div>
+      <p>Simulated phenotype values for both traits in the 1KG cohort, plus ancestry labels (<code>1kg-sample-2504-phased.txt</code>) and EUR sample IDs for LD clumping.</p>
+      <div class="dl-btns">
+        <a href="https://github.com/moeenriaz2/SISG26-PRS/releases/download/v1.0/phenotypes.tar.gz" class="dl-btn dl-btn-green" target="_blank">⬇ phenotypes.tar.gz</a>
+      </div>
+    </div>
+
+    <div class="data-card">
+      <div class="data-card-header">
+        <div class="data-icon">🔢</div>
+        <div>
+          <h4>LD Matrices for SBayes C</h4>
+          <div class="data-meta">38 LD blocks · Chr20 · UKB EUR N=348,501 · ~500 MB</div>
+        </div>
+      </div>
+      <p>Pre-computed GCTB sparse LD block matrices for chromosome 20. Includes <code>ldm/mldm.txt</code> listing all block paths — passed to GCTB via <code>--mldm</code>.</p>
+      <div class="dl-btns">
+        <a href="https://github.com/moeenriaz2/SISG26-PRS/releases/download/v1.0/ldm_chr20.tar.gz" class="dl-btn dl-btn-green" target="_blank">⬇ ldm_chr20.tar.gz</a>
+        <a href="https://cnsgenomics.com/software/gctb/#Download" class="dl-btn dl-btn-ghost" target="_blank">🔗 GCTB LDMs</a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- METHODS & TOOLS -->
+<section id="methods">
+  <div class="section-title">Required Software</div>
+  <table>
+    <thead><tr><th>Tool</th><th>Version</th><th>Download</th><th>Used for</th></tr></thead>
+    <tbody>
+      <tr><td><strong>PLINK 1.9</strong></td><td>≥ 1.9</td><td><a href="https://www.cog-genomics.org/plink/1.9/">cog-genomics.org</a></td><td>LD clumping, PRS scoring</td></tr>
+      <tr><td><strong>PLINK 2</strong></td><td>≥ 2.0</td><td><a href="https://www.cog-genomics.org/plink/2.0/">cog-genomics.org</a></td><td>Data QC, VCF conversion</td></tr>
+      <tr><td><strong>GCTB</strong></td><td>≥ 2.05</td><td><a href="https://cnsgenomics.com/software/gctb/#Download">cnsgenomics.com</a></td><td>SBayes C method</td></tr>
+      <tr><td><strong>R</strong></td><td>≥ 4.2</td><td><a href="https://cran.r-project.org/">cran.r-project.org</a></td><td>SBLUP, evaluation, plots</td></tr>
+    </tbody>
+  </table>
+  <p style="font-size:0.87rem">All tools are installed automatically by running <code>bash setup.sh</code> from the repo root (Linux and macOS supported).</p>
+</section>
+
+<!-- SCHEDULE -->
+<section id="schedule">
+  <div class="section-title">Session Schedule</div>
+  <div class="schedule">
+    <div class="sched-row">
+      <div class="sched-time">0:00 – 0:20</div>
+      <div><div class="sched-label">Setup &amp; Data Download</div><div class="sched-desc">Clone repo, run <code>setup.sh</code>, run <code>data/download_1kg.sh</code>, extract release archives</div></div>
+    </div>
+    <div class="sched-row highlight">
+      <div class="sched-time">0:20 – 0:55</div>
+      <div><div class="sched-label">Part 1 · C+PT</div><div class="sched-desc">Clumping + P-value threshold sweep, PRS scoring with PLINK, R² evaluation across ancestries</div></div>
+    </div>
+    <div class="sched-row highlight">
+      <div class="sched-time">0:55 – 1:25</div>
+      <div><div class="sched-label">Part 2 · SBLUP</div><div class="sched-desc">Compute LD matrix (or use 1KG fallback), run <code>sblup.R</code>, score and evaluate</div></div>
+    </div>
+    <div class="sched-row highlight">
+      <div class="sched-time">1:25 – 1:50</div>
+      <div><div class="sched-label">Part 3 · SBayes C</div><div class="sched-desc">Run GCTB MCMC, extract posterior SNP effects, score and evaluate</div></div>
+    </div>
+    <div class="sched-row">
+      <div class="sched-time">1:50 – 2:00</div>
+      <div><div class="sched-label">Method Comparison &amp; Discussion</div><div class="sched-desc">Compare R² across methods and ancestries, discuss LD mismatch, polygenic architecture, GWAS sample size</div></div>
+    </div>
+  </div>
+
+  <div class="callout callout-info">
+    <strong>Ready to start?</strong> Open the step-by-step practical: <a href="practical.html" style="font-weight:700">practical.html →</a>
+  </div>
+</section>
+
+</div><!-- /container -->
+
+<footer>
+  Based on the SISG 2025 QG3 Practical by Joelle Mbatchou et al. ·
+  Adapted for SISG 2026 by Moeen Riaz ·
+  <a href="https://github.com/moeenriaz2/SISG26-PRS">github.com/moeenriaz2/SISG26-PRS</a>
+</footer>
+
+</body>
+</html>
