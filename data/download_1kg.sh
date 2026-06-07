@@ -70,6 +70,7 @@ echo ""
 echo "[2/3] Converting VCF to PLINK format..."
 plink2 \
   --vcf ALL.chr20.vcf.gz \
+  --const-fid \
   --chr 20 \
   --max-alleles 2 \
   --make-bed \
